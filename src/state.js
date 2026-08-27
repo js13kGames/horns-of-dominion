@@ -1,0 +1,56 @@
+export const W = 1000, H = 700
+export const WIN = 14          // 70% of 20 cities
+export const NC = 20
+
+// --- seeded rng -----------------------------------------------------------
+let s0 = 1
+export function setSeed (n) { s0 = n >>> 0 }
+export function rnd () {
+  s0 = (s0 + 0x6D2B79F5) | 0
+  let t = Math.imul(s0 ^ (s0 >>> 15), 1 | s0)
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+export const rf = (a, b) => a + rnd() * (b - a)
+export const ri = (a, b) => Math.floor(rf(a, b + 1))
+export const pick = a => a[ri(0, a.length - 1)]
+
+// --- tunables (every balance number lives here) ---------------------------
+export const T = {
+  inc: 0.05,        // gold per econ point per tick
+  grow: 0.004,      // pop regrowth rate toward cap
+  raiseG: 25,       // gold to raise an army
+  raiseP: 40,       // population consumed
+  raiseW: 40,       // warriors produced
+  minPop: 55,       // pop floor to allow raising
+  repair: 2,        // gold per point of wall repaired
+  repairStep: 10,   // points per repair click
+  speed: 26,        // world units an army covers per tick
+  atk: 0.06,        // field-battle attrition coefficient
+  sgLoss: 0.15,     // attacker losses per tick = sgLoss * city.d
+  sgDmg: 1 / 12,    // wall damage per tick per warrior
+  garrison: 0.35,   // wall fraction restored to the captor
+  sack: 0.75,       // pop multiplier on capture
+  mend: 0.15,       // passive wall regen per tick
+  rout: 0.35,       // AI retreats below this share of its starting stack
+  aiHoard: 1.5,     // AI raises once gold > raiseG * aiHoard
+  aiCap: 55,        // AI stops mustering above this many warriors per city held
+  bold: 4000,       // AI aggression doubles every this many ticks
+  escal: 5000       // war escalation: income doubles every this many ticks
+}
+
+// --- game state -----------------------------------------------------------
+export const S = {
+  C: [],      // cities  {x,y,nm,o,p,d,e,s,m,n[]}
+  A: [],      // armies  {o,w,a,t,pr,w0}
+  F: [],      // factions{g,c,em,nm,ai,alive}
+  E: [],      // edges   [i,j]
+  fx: [],     // transient effects {x,y,k,l,c}
+  log: [],
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0
+}
+
+export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+export const owned = f => S.C.filter(c => c.o === f)
+export function say (msg) { S.log.unshift(msg); S.log.length = Math.min(S.log.length, 4) }
+export function boom (x, y, k, c) { S.fx.push({ x, y, k, c, l: 1 }) }
