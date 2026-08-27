@@ -85,17 +85,33 @@ ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
 // select it and march to a neighbour
 step(1)
-tap(...(() => { const p = armyXY(army); return [p.x, p.y] })())
-function armyXY (a) {
-  const c = S.C[a.a], ang = a.o * 1.2566 - 1.9, r = 13 + Math.min(c.p, 260) / 20 + 15
-  return { x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }
-}
+tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
 const dest = S.C[mine].n[0]
 tap(S.C[dest].x, S.C[dest].y)
 ok(army.t === dest, 'clicking a neighbour issues a march order')
-step(200)
+
+// interpolation: the drawn position must advance between ticks, not only on them
+step(1)
+const rxWas = army.rx, prWas = army.pr
+step(2)
+ok(army.pr === prWas && army.rx !== rxWas,
+  'the render position advances between ticks, with no tick in between')
+step(40)
 ok(army.t < 0 || army.pr > 0, 'the warband is moving / arrived')
+
+// a moving warband must be clickable where it is drawn, not where it logically is
+if (army.t >= 0) {
+  S.sel = null
+  tap(army.rx, army.ry)
+  ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'a marching warband is clickable at its drawn spot')
+  const back = army.a
+  tap(S.C[back].x, S.C[back].y)
+  ok(army.t === back, 'clicking the node behind turns a marching warband around')
+} else {
+  ok(1, 'warband arrived before the turn-back check could run')
+  ok(1, '-')
+}
 
 // repair
 const w0 = S.C[mine].s = 5
@@ -110,8 +126,8 @@ win.h.keydown({ key: '2' }); ok(S.speed === 2, 'key 2 sets speed')
 win.h.keydown({ key: 'Escape' }); ok(S.sel === null, 'escape clears selection')
 
 // run to a conclusion
-S.speed = 4
-for (let i = 0; i < 4000 && !S.over; i++) step(20, 100)
+S.speed = 8
+for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
 ok(/New kingdom/.test(els.ov.innerHTML), 'end screen renders')
 const seedWas = S.seed

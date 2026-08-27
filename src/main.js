@@ -2,7 +2,7 @@ import { S } from './state.js'
 import { genMap } from './map.js'
 import { tick, getArmy, order } from './sim.js'
 import { ai } from './ai.js'
-import { resize, draw, toWorld, cityR, armyPos, cv } from './render.js'
+import { resize, draw, toWorld, cityR, cv } from './render.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
 
 const TICK = 0.5          // seconds of real time per tick at 1×
@@ -31,6 +31,7 @@ function frame (ts) {
     acc += dt * S.speed
     let guard = 0
     while (acc >= TICK && guard++ < 8) { acc -= TICK; tick(); ai() }
+    S.alpha = Math.min(1, acc / TICK)
     if (S.over) ending()
   }
   draw(dt)
@@ -40,10 +41,9 @@ function frame (ts) {
 cv.addEventListener('pointerdown', e => {
   if (!playing || S.over) return
   const p = toWorld(e.clientX, e.clientY)
-  let ha = null
+  let ha = null                       // hit-test what the player sees, not the logical spot
   for (const a of S.A) {
-    const q = armyPos(a)
-    if (Math.hypot(q.x - p.x, q.y - p.y) < 15) { ha = a; break }
+    if (Math.hypot(a.rx - p.x, a.ry - p.y) < 15) { ha = a; break }
   }
   let hc = -1
   for (let i = 0; i < S.C.length; i++) {
@@ -65,6 +65,7 @@ addEventListener('keydown', e => {
   else if (k === '1') S.speed = 1
   else if (k === '2') S.speed = 2
   else if (k === '3') S.speed = 4
+  else if (k === '4') S.speed = 8
   else if (k === 'Escape') S.sel = null
   ui()
 })

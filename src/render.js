@@ -1,5 +1,5 @@
-import { S, W, H } from './state.js'
-import { getArmy } from './sim.js'
+import { S, W, H, T } from './state.js'
+import { getArmy, prog } from './sim.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -19,16 +19,42 @@ export const toWorld = (px, py) => ({ x: (px - V.ox) / V.s, y: (py - V.oy) / V.s
 export const cityR = c => 13 + Math.min(c.p, 260) / 20
 const col = o => o < 0 ? '#6b6482' : S.F[o].c
 
-// where an army sits: lerped along its edge, or fanned around its node by owner
-export function armyPos (a) {
+// where an army logically sits: lerped along its road with sub-tick progress,
+// or fanned around its node by owner. `sp` slides it sideways so hosts sharing
+// a road stay legible.
+function spot (a, sp) {
   const c = S.C[a.a]
   if (a.t >= 0) {
-    const d = S.C[a.t]
-    return { x: c.x + (d.x - c.x) * a.pr, y: c.y + (d.y - c.y) * a.pr }
+    const d = S.C[a.t], L = Math.hypot(d.x - c.x, d.y - c.y) || 1, pr = prog(a)
+    return {
+      x: c.x + (d.x - c.x) * pr - (d.y - c.y) / L * sp,
+      y: c.y + (d.y - c.y) * pr + (d.x - c.x) / L * sp
+    }
   }
-  const ang = a.o * 1.2566 - 1.9
-  const r = cityR(c) + 15
+  const ang = a.o * 1.2566 - 1.9, r = cityR(c) + 15
   return { x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }
+}
+
+// render position eases toward the logical one, which absorbs every jump the
+// simulation makes: arriving at a node, re-slotting a fan, merging a stack
+export function place (dt) {
+  const lane = {}
+  for (const a of S.A) {
+    if (a.t < 0) continue
+    const k = a.a < a.t ? a.a + ':' + a.t : a.t + ':' + a.a
+    ;(lane[k] || (lane[k] = [])).push(a)
+  }
+  const sp = new Map()
+  for (const k in lane) {
+    const g = lane[k].sort((x, y) => x.id - y.id)
+    g.forEach((a, i) => sp.set(a, (i - (g.length - 1) / 2) * 13))
+  }
+  const e = 1 - Math.pow(0.0015, dt)
+  for (const a of S.A) {
+    const p = spot(a, sp.get(a) || 0)
+    if (a.rx === undefined) { a.rx = p.x; a.ry = p.y }
+    else { a.rx += (p.x - a.rx) * e; a.ry += (p.y - a.ry) * e }
+  }
 }
 
 function ring (cx, cy, r, frac, c, w) {
@@ -43,6 +69,7 @@ function label (t, cx, cy, size, c, weight) {
 }
 
 export function draw (dt) {
+  place(dt)
   const w = cv.width, h = cv.height
   x.save(); x.setTransform(1, 0, 0, 1, 0, 0)
   x.fillStyle = '#0b0a12'; x.fillRect(0, 0, w, h); x.restore()
@@ -59,8 +86,8 @@ export function draw (dt) {
   const sel = S.sel
   if (sel && sel.k === 'a') {
     const a = getArmy(sel.i)
-    if (a && a.t < 0) {
-      for (const j of S.C[a.a].n) {
+    if (a) {
+      for (const j of a.t < 0 ? S.C[a.a].n : [a.a]) {
         const c = S.C[j]
         x.beginPath(); x.arc(c.x, c.y, cityR(c) + 9, 0, 6.2832)
         x.fillStyle = '#ffffff12'; x.fill()
@@ -86,7 +113,7 @@ export function draw (dt) {
 
   // armies
   for (let i = 0; i < S.A.length; i++) {
-    const a = S.A[i], p = armyPos(a), k = col(a.o)
+    const a = S.A[i], p = { x: a.rx, y: a.ry }, k = col(a.o)
     x.beginPath(); x.arc(p.x, p.y, 12, 0, 6.2832)
     x.fillStyle = '#0f0d18'; x.fill()
     x.strokeStyle = k; x.lineWidth = 2; x.stroke()

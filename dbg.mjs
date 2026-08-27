@@ -4,18 +4,19 @@ import { tick, cnt } from './src/sim.js'
 import { ai } from './src/ai.js'
 const g = +process.argv[2]
 genMap(1000 + g); S.me = 0; S.F.forEach(f => { f.ai = 1 })
-let orders = 0
-for (let t = 0; t < 12000; t++) {
-  const before = S.A.map(a => a.t).join()
+let engagedTicks = 0, movingTicks = 0, sieges = 0, captures = 0, flips = 0
+let ownerWas = S.C.map(c => c.o)
+for (var t = 0; t < 120000; t++) {
   tick(); ai(); S.over = 0
-  if (S.A.map(a => a.t).join() !== before) orders++
+  for (const a of S.A) { if (a.t >= 0) (a.st ? engagedTicks++ : movingTicks++) }
+  for (let i = 0; i < 20; i++) {
+    const c = S.C[i]
+    if (S.A.some(a => a.t < 0 && a.a === i && a.o !== c.o)) sieges++
+    if (c.o !== ownerWas[i]) { flips++; ownerWas[i] = c.o }
+  }
   if (S.F.some((f, i) => cnt(i) >= WIN)) { console.log('decided at', t); process.exit(0) }
 }
-console.log('TIMEOUT cities', S.F.map((f, i) => cnt(i)), 'orders issued', orders)
+console.log('TIMEOUT cities', S.F.map((f, i) => cnt(i)))
+console.log('army-ticks: engaged', engagedTicks, 'moving', movingTicks, '| siege-ticks', sieges, '| city flips', flips)
+console.log('armies', S.A.map(a => `${a.o}:${a.w | 0}${a.t >= 0 ? (a.st ? '⚔' : '→') + S.C[a.t].nm : '@' + S.C[a.a].nm}`).join('  '))
 console.log('gold', S.F.map(f => f.g | 0))
-console.log('armies', S.A.map(a => `${a.o}:${a.w | 0}@${S.C[a.a].nm}${a.t >= 0 ? '->' + S.C[a.t].nm : ''}`).join('  '))
-const live = S.F.map((f, i) => i).filter(i => cnt(i) > 0)
-for (const i of live) {
-  const front = S.C.filter(c => c.o === i && c.n.some(j => S.C[j].o !== i))
-  console.log('faction', i, 'frontier:', front.map(c => `${c.nm} s${c.s | 0}/${c.m} d${c.d} p${c.p | 0}`).join(' | '))
-}

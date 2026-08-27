@@ -6,7 +6,8 @@ const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o =
 
 // one faction acts per tick, round-robin, so cost stays flat
 export function ai () {
-  const f = S.tick % S.F.length
+  if (S.tick % T.aiEvery) return
+  const f = ((S.tick / T.aiEvery) | 0) % S.F.length
   const F = S.F[f]
   if (!F.ai || !F.alive) return
   const mine = S.C.map((c, i) => i).filter(i => S.C[i].o === f)
@@ -14,7 +15,9 @@ export function ai () {
 
   // muster — bounded, and never at the expense of marching
   const host = S.A.reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
-  if (F.g > T.raiseG * T.aiHoard && host < mine.length * T.aiCap) {
+  // the cap lifts as the war drags on, so a faction that has won the economy can
+  // eventually field a host big enough to actually finish — no eternal see-saw
+  if (F.g > T.raiseG * T.aiHoard && host < mine.length * T.aiCap * (1 + S.tick / T.escal)) {
     const safe = mine.filter(i => !S.C[i].n.some(j => force(j, f) > 0))
     const pool = (safe.length ? safe : mine).sort((a, b) => S.C[b].p - S.C[a].p)[0]
     if (canRaise(pool, f)) raise(pool, f)

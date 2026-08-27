@@ -16,27 +16,34 @@ export const ri = (a, b) => Math.floor(rf(a, b + 1))
 export const pick = a => a[ri(0, a.length - 1)]
 
 // --- tunables (every balance number lives here) ---------------------------
+// P scales every *rate* — gold, growth, marching, attrition, siege, mending —
+// so the whole game slows down without a single balance ratio shifting.
+// Quantities (costs, warriors, wall points) are deliberately left alone.
+const P = 0.1
 export const T = {
-  inc: 0.05,        // gold per econ point per tick
-  grow: 0.004,      // pop regrowth rate toward cap
+  inc: 0.05 * P,    // gold per econ point per tick
+  grow: 0.004 * P,  // pop regrowth rate toward cap
   raiseG: 25,       // gold to raise an army
   raiseP: 40,       // population consumed
   raiseW: 40,       // warriors produced
   minPop: 55,       // pop floor to allow raising
   repair: 2,        // gold per point of wall repaired
   repairStep: 10,   // points per repair click
-  speed: 26,        // world units an army covers per tick
-  atk: 0.06,        // field-battle attrition coefficient
-  sgLoss: 0.15,     // attacker losses per tick = sgLoss * city.d
-  sgDmg: 1 / 12,    // wall damage per tick per warrior
+  speed: 26 * P,    // world units an army covers per tick
+  reach: 18,        // contact range: armies this close on a road engage
+  atk: 0.06 * P,    // field-battle attrition coefficient
+  sgLoss: 0.15 * P, // attacker losses per tick = sgLoss * city.d
+  sgDmg: P / 12,    // wall damage per tick per warrior
   garrison: 0.35,   // wall fraction restored to the captor
   sack: 0.75,       // pop multiplier on capture
-  mend: 0.15,       // passive wall regen per tick
+  mend: 0.15 * P,   // passive wall regen per tick
   rout: 0.35,       // AI retreats below this share of its starting stack
   aiHoard: 1.5,     // AI raises once gold > raiseG * aiHoard
+  aiEvery: 1 / P,   // ticks between AI turns — scales with pace, or the AI
+                    // would get ten times as many decisions per unit of war
   aiCap: 55,        // AI stops mustering above this many warriors per city held
-  bold: 4000,       // AI aggression doubles every this many ticks
-  escal: 5000       // war escalation: income doubles every this many ticks
+  bold: 4000 / P,   // AI aggression doubles every this many ticks
+  escal: 5000 / P   // sieges grind faster every this many ticks
 }
 
 // --- game state -----------------------------------------------------------
@@ -47,7 +54,7 @@ export const S = {
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
   log: [],
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)

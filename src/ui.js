@@ -1,6 +1,6 @@
 import { S, T, WIN, NC } from './state.js'
 import { REALMS } from './map.js'
-import { raise, fix, canRaise, canFix, cnt, getArmy } from './sim.js'
+import { raise, fix, canRaise, canFix, cnt, getArmy, prog } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov')
@@ -15,7 +15,7 @@ export function ui () {
     `<span>🏰 <b>${n}</b>/${NC}</span>` +
     `<div class=bar><i style=width:${Math.min(100, n / WIN * 100)}%></i></div>` +
     `<span style=opacity:.55>${S.F.map((f, i) => f.alive ? `<span style=color:${f.c}>${f.em}${cnt(i)}</span>` : '').join(' ')}</span>` +
-    `<div class=sp>${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×']]
+    `<div class=sp>${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
 
   set(lg, S.log.map(l => `<div>${l}</div>`).join(''))
@@ -40,8 +40,10 @@ export function ui () {
     set(pan, `<h3>🦄 Warband</h3>` +
       row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
       row('Warriors', a.w | 0) +
-      row('Status', a.t >= 0 ? `→ ${S.C[a.t].nm} ${(a.pr * 100) | 0}%` : `at ${S.C[a.a].nm}`) +
-      (a.o === S.me && a.t < 0 ? '<div class=hint>Click a glowing neighbour to march.</div>' : ''))
+      row('Status', a.t >= 0 ? `${a.st ? '⚔️' : '→'} ${S.C[a.t].nm} ${(prog(a) * 100) | 0}%` : `at ${S.C[a.a].nm}`) +
+      (a.o === S.me
+        ? `<div class=hint>${a.t < 0 ? 'Click a glowing neighbour to march.' : 'Click the glowing node behind to turn back.'}</div>`
+        : ''))
   }
 }
 const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`

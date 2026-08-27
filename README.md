@@ -9,7 +9,11 @@ march them across the node map, break enemy field armies, and grind down walls.
     npm run build    # writes dist/index.html + dist/game.zip, fails over 13312 B
 
 Controls: click a city to inspect or muster · click your warband, then a glowing
-neighbour, to march · `space` pause · `1` `2` `3` speed · `esc` deselect.
+neighbour, to march · click the node *behind* a marching warband to turn it back ·
+`space` pause · `1` `2` `3` `4` speed (1× 2× 4× 8×) · `esc` deselect.
+
+Hosts that meet on the same road stop and fight where they stand, and anyone else
+arriving on that road joins the melee. Sieges only start once the road is clear.
 
 The map is procedural and seeded — the seed lives in the URL hash, so `#12345`
 replays the exact same kingdom.
@@ -29,5 +33,11 @@ replays the exact same kingdom.
 ## Checks
 
     node sim-test.mjs    # 400 headless games: fairness, pacing, stalemate hunt
+    node road-test.mjs   # road-engagement mechanics, deterministic placements
     node dom-test.mjs    # drives the real modules against a stub browser
     node dist-test.mjs   # boots the shipped, minified dist/index.html
+
+`src/state.js` opens with `const P = 0.1` — the global pace. It scales every *rate*
+(gold, growth, marching, attrition, siege, mending, and the AI's turn cadence) while
+leaving quantities alone, so the whole game speeds up or slows down without any
+balance ratio shifting. Set it to 1 for the original tempo.
