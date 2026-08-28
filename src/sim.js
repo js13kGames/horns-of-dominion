@@ -16,6 +16,22 @@ const along = (a, pr) => a.a < a.t ? pr * span(a) : (1 - pr) * span(a)
 export const prog = a => a.t < 0 ? 1
   : Math.min(1, a.pr + (a.st ? 0 : S.alpha * T.speed / span(a)))
 
+// --- what the player can see -----------------------------------------------
+// purely derived: a reveal lasts only while a host is there, so there is no
+// discovered-state to store, reset, or keep in sync. geography always draws.
+const myAt = i => at(i).some(a => a.o === S.me)
+export const seeCity = i => {
+  const c = S.C[i]
+  return c.o === S.me || myAt(i) || c.n.some(j => S.C[j].o === S.me)
+}
+export const seeRoad = (i, j) =>
+  S.C[i].o === S.me || S.C[j].o === S.me ||        // touches my territory
+  myAt(i) || myAt(j) ||                            // a host of mine holds an end
+  S.A.some(a => a.o === S.me && a.t >= 0 &&        // or is marching it right now
+    ((a.a === i && a.t === j) || (a.a === j && a.t === i)))
+export const seeArmy = a =>
+  a.o === S.me || (a.t >= 0 ? seeRoad(a.a, a.t) : seeCity(a.a))
+
 // next step on a shortest path from -> to, by hop count. 20 nodes: BFS is plenty.
 export function hop (from, to) {
   if (from === to) return -1

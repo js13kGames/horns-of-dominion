@@ -1,6 +1,6 @@
 import { S, T, WIN, NC, D } from './state.js'
 import { REALMS } from './map.js'
-import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog } from './sim.js'
+import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov')
@@ -11,7 +11,8 @@ const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' dis
 export function ui () {
   if (S.over || !S.F.length) return
   const F = S.F[S.me], n = cnt(S.me)
-  set(hud, `<span>💎 <b>${F.g | 0}</b></span>` +
+  set(hud, `<span style=color:${F.c}>${F.em} <b>${F.nm}</b></span>` +
+    `<span>💎 <b>${F.g | 0}</b></span>` +
     `<span>🏰 <b>${n}</b>/${NC}</span>` +
     `<div class=bar><i style=width:${Math.min(100, n / WIN * 100)}%></i></div>` +
     `<span style=opacity:.55>${S.F.map((f, i) => f.alive ? `<span style=color:${f.c}>${f.em}${cnt(i)}</span>` : '').join(' ')}</span>` +
@@ -23,13 +24,14 @@ export function ui () {
   const s = S.sel
   if (!s) return set(pan, '')
   if (s.k === 'c') {
-    const c = S.C[s.i], own = c.o === S.me
-    set(pan, `<h3>${c.cap ? '👑' : '🏰'} ${c.nm}</h3>` +
-      row('Ruler', S.F[c.o].em + ' ' + S.F[c.o].nm) +
-      row('👥 Populace', c.p | 0) +
-      row('🛡 Defenses', (c.s | 0) + ' / ' + c.m) +
-      row('⚔️ Defense', c.d) +
-      row('💎 Economy', c.e) +
+    const c = S.C[s.i], own = c.o === S.me, lit = seeCity(s.i)
+    const q = '<span style=opacity:.45>???</span>'
+    set(pan, `<h3>${lit && c.cap ? '👑' : '🏰'} ${c.nm}</h3>` +
+      row('Ruler', lit ? S.F[c.o].em + ' ' + S.F[c.o].nm : '🌫️ unknown') +
+      row('👥 Populace', lit ? c.p | 0 : q) +
+      row('🛡 Defenses', lit ? (c.s | 0) + ' / ' + c.m : q) +
+      row('⚔️ Defense', lit ? c.d : q) +
+      row('💎 Economy', lit ? c.e : q) +
       (own
         ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.mu
             ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
@@ -37,7 +39,7 @@ export function ui () {
           `${btn('f', s.i, canFix(s.i, S.me), c.rp
             ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
             : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
-        : '<div class=hint>March a warband here to lay siege.</div>'))
+        : `<div class=hint>${lit ? 'March a warband here to lay siege.' : '🌫️ Beyond your reach. Scout it with a warband.'}</div>`))
     return
   }
 

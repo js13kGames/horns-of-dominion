@@ -68,6 +68,8 @@ ok(S.me === 2 && !S.F[2].ai && !!S.F[0].ai, 'picking a realm sets the player fac
 ok(els.ov.innerHTML === '', 'overlay cleared on start')
 step(3)
 ok(/💎/.test(els.hud.innerHTML), 'hud renders after start')
+ok(els.hud.innerHTML.includes(S.F[2].nm) && els.hud.innerHTML.includes(S.F[2].em),
+  'hud names your realm')
 
 const g0 = S.F[2].g
 step(120)                              // ~2s -> 4 ticks
@@ -99,27 +101,28 @@ ok(S.A.length === n0 + 1, 'the warband appears once mustered')
 const army = S.A[S.A.length - 1]
 ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
-// select it — and prove a stray click can no longer march it
+// selecting your own host arms targeting with no second click
 step(1)
 tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
+ok(S.aim === army.id, 'and arms targeting immediately')
+
+// with targeting cancelled, a city click is only a selection
+click('k', 0)
+ok(!S.aim, 'Cancel disarms targeting')
 const dest = S.C[mine].n[0]
 tap(S.C[dest].x, S.C[dest].y)
-ok(army.t < 0, 'clicking a city with a warband selected does NOT move it')
+ok(army.t < 0, 'with targeting off, clicking a city does not move the host')
 ok(S.sel.k === 'c' && S.sel.i === dest, 'it selects that city instead')
 
-// orders come from the panel now
 tap(army.rx, army.ry)
-click('m', 0)
-ok(S.aim === army.id, 'Mobilize arms targeting')
+ok(S.aim === army.id, 'reselecting the host re-arms it')
 tap(S.C[dest].x, S.C[dest].y)
 ok(army.t === dest && !S.aim, 'the next city click becomes the destination')
 
 step(1)
 tap(army.rx, army.ry)
-click('m', 0); ok(S.aim === army.id, 'Mobilize can be re-armed')
-click('k', 0); ok(!S.aim, 'Cancel disarms targeting')
-click('m', 0)
+click('m', 0); ok(S.aim === army.id, 'Mobilize can also arm it explicitly')
 win.h.keydown({ key: 'Escape' })
 ok(!S.aim && S.sel, 'Escape cancels targeting first')
 win.h.keydown({ key: 'Escape' })
@@ -163,7 +166,9 @@ ok(S.C[mine].s > w0, 'walls rise as the masons work (' + w0 + ' -> ' + (S.C[mine
 click('v', 4); ok(S.speed === 4, 'speed button sets 4x')
 win.h.keydown({ key: ' ', preventDefault () {} }); ok(S.speed === 0, 'space pauses')
 win.h.keydown({ key: '2' }); ok(S.speed === 2, 'key 2 sets speed')
-win.h.keydown({ key: 'Escape' }); ok(S.sel === null, 'escape clears selection')
+win.h.keydown({ key: 'Escape' })
+win.h.keydown({ key: 'Escape' })
+ok(S.sel === null && !S.aim, 'escape clears targeting, then the selection')
 
 // --- multi-hop marching, splitting, and the battle roster ------------------
 S.F[2].g = 999
@@ -206,6 +211,38 @@ step(2)
 ok(/Battle|Siege/.test(els.pan.innerHTML), 'the battle roster panel renders')
 ok(S.F.filter((f, i) => els.pan.innerHTML.includes(f.em)).length >= 2,
   'and lists both banners in the fight')
+
+// --- fog of war ------------------------------------------------------------
+S.speed = 0                            // freeze the board so the fog is deterministic
+S.A = []
+S.sel = null
+step(2)
+const adj = i => S.C[i].n.some(j => S.C[j].o === S.me)
+const dark = S.C.findIndex((c, i) => c.o !== S.me && !adj(i))
+const near = S.C.findIndex((c, i) => c.o !== S.me && adj(i))
+ok(dark >= 0 && near >= 0, 'the map offers both a fogged and a bordering enemy city')
+
+S.sel = { k: 'c', i: dark }; step(1)
+ok(/unknown/.test(els.pan.innerHTML), 'a distant city hides its ruler')
+ok(/\?\?\?/.test(els.pan.innerHTML), 'and hides its numbers')
+
+S.sel = { k: 'c', i: near }; step(1)
+ok(!/unknown/.test(els.pan.innerHTML), 'a city bordering mine reports its true ruler')
+
+// scouting is live: present a host, the fog lifts; withdraw, it closes
+const scout = { id: 6001, o: 2, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
+S.A = [scout]
+S.sel = { k: 'c', i: dark }; step(2)
+ok(!/unknown/.test(els.pan.innerHTML), 'a warband standing there lifts the fog')
+S.A = []; step(2)
+ok(/unknown/.test(els.pan.innerHTML), 'and the fog closes again when it withdraws')
+
+// hosts inside the fog are neither drawn nor clickable
+S.A = [{ id: 6002, o: 3, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
+S.sel = null; step(2)
+tap(S.A[0].rx, S.A[0].ry)
+ok(!S.sel, 'an enemy host in the fog cannot be selected')
+S.A = []; S.speed = 1
 
 // run to a conclusion
 S.speed = 8

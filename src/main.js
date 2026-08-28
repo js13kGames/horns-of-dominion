@@ -1,6 +1,6 @@
 import { S, applyDiff } from './state.js'
 import { genMap } from './map.js'
-import { tick, getArmy, order } from './sim.js'
+import { tick, getArmy, order, seeArmy } from './sim.js'
 import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
@@ -44,6 +44,7 @@ cv.addEventListener('pointerdown', e => {
   const p = toWorld(e.clientX, e.clientY)
   let ha = null                       // hit-test what the player sees, not the logical spot
   for (const a of S.A) {
+    if (!seeArmy(a)) continue                     // cannot click what you cannot see
     if (Math.hypot(a.rx - p.x, a.ry - p.y) < 15) { ha = a; break }
   }
   let hc = -1
@@ -58,8 +59,9 @@ cv.addEventListener('pointerdown', e => {
     S.aim = 0
     return ui()
   }
-  // otherwise a click only ever selects — orders come from the panel
+  // a click selects; picking up one of your own hosts arms targeting straight away
   S.sel = ha ? { k: 'a', i: ha.id } : hc >= 0 ? { k: 'c', i: hc } : null
+  S.aim = ha && ha.o === S.me ? ha.id : 0
   ui()
 })
 

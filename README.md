@@ -9,10 +9,16 @@ walls. Four AI difficulty rungs, starting on the third.
     npm run dev      # http://localhost:8080, rebuilds on save
     npm run build    # writes dist/index.html + dist/game.zip, fails over 13312 B
 
-Controls: **clicking the map only ever selects** — orders come from the warband panel.
-🎯 Mobilize, then click any city, and the host paths across the map · ↩ Turn back
-reverses a march · ✂️ Split divides a resting warband · `space` pause · `1`–`4` speed
-(1× 2× 4× 8×) · `esc` cancels targeting, then clears the selection.
+Controls: click one of your warbands and it is ready to move — click any city and it
+paths there across the map · ↩ Turn back reverses a march · ✂️ Split divides a resting
+warband · ✖ Cancel (or `esc`) disarms targeting, so you can inspect cities freely ·
+`space` pause · `1`–`4` speed (1× 2× 4× 8×) · `esc` again clears the selection.
+
+**Fog of war.** You see a city only while you hold it, border it, or stand a warband on
+it; you see a road only while it touches your land or one of your hosts is on it. Roads
+and city positions are always drawn — they just go grey, along with the banner and every
+number behind them. The fog closes again the moment a host withdraws, and enemy warbands
+in the dark are not drawn at all. The AI plays with full information.
 
 Hosts that meet on the same road stop and fight where they stand, and anyone else
 arriving on that road joins the melee. Sieges only start once the road is clear.

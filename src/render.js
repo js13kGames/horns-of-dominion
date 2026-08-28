@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy } from './sim.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -76,9 +76,10 @@ export function draw (dt) {
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
 
   // edges
-  x.lineWidth = 2; x.strokeStyle = '#26213c'
+  x.lineWidth = 2
   for (const [i, j] of S.E) {
     const a = S.C[i], b = S.C[j]
+    x.strokeStyle = seeRoad(i, j) ? '#342d55' : '#191628'   // fogged roads grey, never gone
     x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke()
   }
 
@@ -118,18 +119,18 @@ export function draw (dt) {
 
   // cities
   for (let i = 0; i < S.C.length; i++) {
-    const c = S.C[i], r = cityR(c), k = col(c.o)
+    const c = S.C[i], r = cityR(c), lit = seeCity(i), k = lit ? col(c.o) : '#4a4560'
     x.beginPath(); x.arc(c.x, c.y, r, 0, 6.2832)
     x.fillStyle = '#171426'; x.fill()
     x.strokeStyle = k; x.lineWidth = 2.5; x.stroke()
-    ring(c.x, c.y, r + 5, Math.max(0, c.s) / c.m, k + '99', 3)
-    label(c.cap ? '👑' : '🏰', c.x, c.y + 1, r * 1.1)
-    if (c.mu) {
+    if (lit) ring(c.x, c.y, r + 5, Math.max(0, c.s) / c.m, k + '99', 3)
+    label(lit && c.cap ? '👑' : '🏰', c.x, c.y + 1, r * 1.1)   // a crown would leak intel
+    if (c.mu && c.o === S.me) {
       ring(c.x, c.y, r + 9, 1 - c.mu / T.muster, '#ffd76a', 2)
       label('⏳', c.x + r + 6, c.y - r - 2, 12)
     }
-    label(c.nm, c.x, c.y + r + 16, 11, '#e8e4f5cc')
-    label('👥' + (c.p | 0) + '  🛡' + (c.s | 0), c.x, c.y + r + 28, 10, '#e8e4f588')
+    label(c.nm, c.x, c.y + r + 16, 11, lit ? '#e8e4f5cc' : '#e8e4f566')
+    label(lit ? '👥' + (c.p | 0) + '  🛡' + (c.s | 0) : '🌫️', c.x, c.y + r + 28, 10, '#e8e4f588')
     if (sel && sel.k === 'c' && sel.i === i) {
       x.setLineDash([4, 4]); x.beginPath(); x.arc(c.x, c.y, r + 11, 0, 6.2832)
       x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke(); x.setLineDash([])
@@ -138,7 +139,9 @@ export function draw (dt) {
 
   // armies
   for (let i = 0; i < S.A.length; i++) {
-    const a = S.A[i], p = { x: a.rx, y: a.ry }, k = col(a.o)
+    const a = S.A[i]
+    if (!seeArmy(a)) continue                      // hidden hosts are not drawn
+    const p = { x: a.rx, y: a.ry }, k = col(a.o)
     x.beginPath(); x.arc(p.x, p.y, 12, 0, 6.2832)
     x.fillStyle = '#0f0d18'; x.fill()
     x.strokeStyle = k; x.lineWidth = 2; x.stroke()
@@ -157,7 +160,7 @@ export function draw (dt) {
       x.setLineDash([3, 3]); x.lineWidth = 2; x.strokeStyle = '#ff5a5a'
       for (const id of a.eg) {
         const b = getArmy(id)
-        if (b) { x.beginPath(); x.arc(b.rx, b.ry, 16, 0, 6.2832); x.stroke() }
+        if (b && seeArmy(b)) { x.beginPath(); x.arc(b.rx, b.ry, 16, 0, 6.2832); x.stroke() }
       }
       if (a.sg >= 0) {
         const c = S.C[a.sg]

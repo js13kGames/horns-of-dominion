@@ -40,3 +40,36 @@ State now — 1,200 games at the default rung: zero stalemates, p50 3,610 ticks 
 
 Worth knowing: total conquest at Warlord actually finishes faster than 70% did against the old AI — a stronger AI plus the crumbling-realm rules make wars decisive rather than long. The thing I can't judge is whether Mobilize feels like one click too many in practice; that's the call to make while playing.
 
+# Round 5
+
+## Topics
+1. Mobilize Unit should be activated by default when a unit is clicked. Remove the additional click.
+2. Nowhere is your faction noted, Add in the top left corner
+4. Only show "current work" (i.e. the progress ring) for cities you control
+3. Fog of War
+- If a enemy city is not adjacent to a city you control, it's hidden by the fog of war: don't show the faction color, use grey.
+- If a path is not adjacent to a city you control, it's hidden by the fog of war: show it grayed out.
+- Scouting units. A warband fighting on an enemy city removes that city and its connected roads from the fog of war. 
+- Scouting units. A warband traveling a road removes that road from the fog of war. 
+- Only show enemy warbands that are in roads or cities not covered by the fog of war.
+
+## Resolution
+
+1. Mobilize is automatic. Clicking one of your own warbands arms targeting immediately — the next city click is the destination. Worth flagging: this is the behaviour that caused your round-four complaint. What's different now is that the mode is visible (every city rings, the panel says "choose a destination") and cancellable via ✖ Cancel or Esc. If it still bites, it's a one-line revert.
+
+2. Your banner now opens the HUD, top-left, in your realm's colour.
+
+3. Fog of war. Your answer on transient reveals turned out to simplify things considerably: because the fog closes behind a host, there's nothing to store — no discovered-city flags, no visited-road set, nothing to reset between games. It's three pure functions over the current board in src/sim.js. Roads and city positions always draw, just greyed; the banner and every number behind it go with the fog, so scouting has a point. A fogged city also shows 🏰 rather than 👑 — the crown would have leaked capital status, which is exactly the intel the fog is meant to hide.
+
+4. Progress rings now render only on cities you control.
+
+The verification worth mentioning: since fog is purely derived, the simulation should be untouched — so sim-test and diff-test had to come back identical to the digit. They did: p50 3620 / p90 5635 / p99 10557 / max 78794, winners 77/71/79/83/90, ladder 0.0 / 19.0 / 47.0 / 66.0. That's stronger evidence than any assertion I could write that fog didn't leak into the balance.
+
+dom-test.mjs gained seven fog assertions, including the live-reveal behaviour you specified — plant a host on a distant enemy city and its panel opens up; withdraw it and the fog closes again. All six harnesses pass. 10,351 B zipped of 13,312, 2,961 B headroom.
+
+Two things you should know:
+
+- The AI plays with full information. The fog is a player-facing layer only. Making it mutual would mean rewriting the AI's scoring to work from partial knowledge, which is a much larger job than this round and would change every balance number I've measured.
+- The dev server you're looking at is the one from earlier, not a new one. My npm run dev hit EADDRINUSE and exited because the previous instance still held port 8080 — but that instance watches src/, so it rebuilt on every save. I checked the served page carries the fog code and its build timestamp matches the source mtimes exactly, so what you're seeing is current.
+
+The muster-ring restriction is render-only and isn't observable through the test stub, so that one is verified by reading the code rather than by assertion — worth a glance when you play.
