@@ -104,6 +104,7 @@ export function genMap (sd) {
     c.e = ri(3, 12)
     c.m = ri(20, 80)
     c.s = c.m
+    c.mu = c.rp = 0        // ticks left mustering, wall points still owed
   }
 
   // five capitals, as far apart as the graph allows

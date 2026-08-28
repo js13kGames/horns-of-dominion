@@ -17,7 +17,7 @@ const ctx = new Proxy({}, {
 ;['cv', 'hud', 'pan', 'log', 'ov'].forEach(mk)
 
 const win = { h: {} }
-globalThis.document = { getElementById: id => els[id] }
+globalThis.document = { getElementById: id => els[id] || mk(id), activeElement: null }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 2
 globalThis.innerWidth = 1280
@@ -37,6 +37,10 @@ const step = (n, ms = 16.7) => {
     q.forEach(f => f(t))
   }
   step.t = t
+}
+const typeIn = (id, v) => {
+  const el = els[id]; el.value = String(v)
+  win.h.input({ target: el })
 }
 const click = (a, i) => {
   const el = { dataset: { a, i: String(i) }, closest: () => el }
@@ -79,7 +83,13 @@ ok(/Raise/.test(els.pan.innerHTML), 'city panel offers Raise')
 S.F[2].g = 999; S.C[mine].p = 200
 const n0 = S.A.length
 click('r', mine)
-ok(S.A.length === n0 + 1, 'raise creates a warband')
+ok(S.A.length === n0 && S.C[mine].mu > 0, 'raise starts a muster, not an instant warband')
+step(2)
+ok(/Mustering/.test(els.pan.innerHTML), 'the panel shows muster progress')
+S.speed = 8
+for (let k = 0; k < 400 && S.A.length === n0; k++) step(1)
+S.speed = 1
+ok(S.A.length === n0 + 1, 'the warband appears once mustered')
 const army = S.A[S.A.length - 1]
 ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
@@ -117,13 +127,57 @@ if (army.t >= 0) {
 const w0 = S.C[mine].s = 5
 S.F[2].g = 999
 click('f', mine)
-ok(S.C[mine].s > w0, 'repair restores walls')
+ok(S.C[mine].s === w0 && S.C[mine].rp > 0, 'repair banks the work rather than finishing it')
+S.speed = 8
+for (let k = 0; k < 200 && S.C[mine].rp; k++) step(1)
+S.speed = 1
+ok(S.C[mine].s > w0, 'walls rise as the masons work (' + w0 + ' -> ' + (S.C[mine].s | 0) + ')')
 
 // speed buttons and keys
 click('v', 4); ok(S.speed === 4, 'speed button sets 4x')
 win.h.keydown({ key: ' ', preventDefault () {} }); ok(S.speed === 0, 'space pauses')
 win.h.keydown({ key: '2' }); ok(S.speed === 2, 'key 2 sets speed')
 win.h.keydown({ key: 'Escape' }); ok(S.sel === null, 'escape clears selection')
+
+// --- multi-hop marching, splitting, and the battle roster ------------------
+S.F[2].g = 999
+const home = S.C.findIndex(c => c.o === 2)
+S.C[home].p = 300
+const far = (() => {                       // a city three hops from home
+  const d = new Array(20).fill(-1); d[home] = 0
+  const q = [home]
+  for (let h = 0; h < q.length; h++) for (const v of S.C[q[h]].n) if (d[v] < 0) { d[v] = d[q[h]] + 1; q.push(v) }
+  return d.findIndex(x => x === 3)
+})()
+S.A = [{ id: 5001, o: 2, w: 120, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
+const h = S.A[0]
+step(2)
+tap(h.rx, h.ry)
+ok(S.sel && S.sel.k === 'a', 'the planted warband selects')
+ok(/Split off/.test(els.pan.innerHTML), 'a resting warband offers Split')
+typeIn('sl', 40)
+ok(S.split === 40, 'dragging the slider updates the split size')
+click('x', 0)
+ok(S.A.length === 2 && S.A[0].w + S.A[1].w === 120, 'splitting conserves warriors')
+ok(S.A.every(a => a.hold), 'both halves are held apart')
+
+tap(S.C[far].x, S.C[far].y)
+ok(h.dst === far && h.t >= 0 && h.t !== far, 'clicking a far city sets a multi-hop march')
+step(3)
+ok(/Bound for/.test(els.pan.innerHTML), 'the panel names the final destination')
+
+// a fight the player is inside
+S.A = [
+  { id: 5002, o: 2, w: 100, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 },
+  { id: 5003, o: 3, w: 100, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
+]
+S.speed = 4
+step(20)
+S.sel = { k: 'a', i: 5002 }
+step(2)
+ok(/Battle|Siege/.test(els.pan.innerHTML), 'the battle roster panel renders')
+ok(S.F.filter((f, i) => els.pan.innerHTML.includes(f.em)).length >= 2,
+  'and lists both banners in the fight')
 
 // run to a conclusion
 S.speed = 8

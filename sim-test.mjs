@@ -6,7 +6,7 @@ import { ai } from './src/ai.js'
 
 let wins = {}, lens = [], stuck = 0
 for (let g = 0; g < 400; g++) {
-  genMap(1000 + g)
+  genMap((+process.argv[2] || 1000) + g)
   S.me = 0
   S.F.forEach(f => { f.ai = 1 })   // all-AI: does anyone ever win?
   // sanity on generation

@@ -1,6 +1,6 @@
 import { S, T, WIN, NC } from './state.js'
 import { REALMS } from './map.js'
-import { raise, fix, canRaise, canFix, cnt, getArmy, prog } from './sim.js'
+import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, prog } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov')
@@ -31,21 +31,73 @@ export function ui () {
       row('⚔️ Defense', c.d) +
       row('💎 Economy', c.e) +
       (own
-        ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
-          `${btn('f', s.i, canFix(s.i, S.me), `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
+        ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.mu
+            ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
+            : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
+          `${btn('f', s.i, canFix(s.i, S.me), c.rp
+            ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
+            : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
         : '<div class=hint>March a warband here to lay siege.</div>'))
-  } else {
-    const a = getArmy(s.i)
-    if (!a) { S.sel = null; return set(pan, '') }
-    set(pan, `<h3>🦄 Warband</h3>` +
-      row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
-      row('Warriors', a.w | 0) +
-      row('Status', a.t >= 0 ? `${a.st ? '⚔️' : '→'} ${S.C[a.t].nm} ${(prog(a) * 100) | 0}%` : `at ${S.C[a.a].nm}`) +
-      (a.o === S.me
-        ? `<div class=hint>${a.t < 0 ? 'Click a glowing neighbour to march.' : 'Click the glowing node behind to turn back.'}</div>`
-        : ''))
+    return
   }
+
+  const a = getArmy(s.i)
+  if (!a) { S.sel = null; return set(pan, '') }
+  const mine = a.o === S.me
+  set(pan, '<h3>🦄 Warband</h3>' +
+    row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
+    row('Warriors', a.w | 0) +
+    row('Status', a.t >= 0
+      ? `${a.st ? '⚔️' : '→'} ${S.C[a.t].nm} ${(prog(a) * 100) | 0}%`
+      : `at ${S.C[a.a].nm}`) +
+    (a.dst >= 0 && a.dst !== a.t ? row('Bound for', S.C[a.dst].nm) : '') +
+    (mine
+      ? `<div class=hint>${a.t < 0
+          ? 'Click any city to march there.'
+          : a.st
+            ? `Click the node behind to break off — costs ${T.flee * 100 | 0}% of the host.`
+            : 'Click the node behind to turn back, or any city to re-route.'}</div>` +
+        (canSplit(a)
+          ? `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
+            `${btn('x', 0, 1, '✂️ Split off')}</div>`
+          : '')
+      : '') +
+    roster(a))
+  sync(a)
 }
+
+// the slider is kept OUT of the diffed string on purpose — writing its value
+// imperatively means dragging never rewrites the panel underneath the drag
+function sync (a) {
+  const sl = $('sl')
+  if (!sl) return
+  const max = Math.floor(a.w) - 1
+  sl.min = 1; sl.max = max
+  if (!(S.split >= 1) || S.split > max) S.split = Math.max(1, Math.round(max / 2))
+  if (document.activeElement !== sl) sl.value = S.split
+  const v = $('slv')
+  if (v) v.textContent = S.split + ' of ' + (a.w | 0)
+}
+
+// who else is in this fight, and what they are defending
+function roster (a) {
+  if (!a.eg) return ''
+  const pow = {}
+  for (const id of a.eg) {
+    const b = getArmy(id)
+    if (b) pow[b.o] = (pow[b.o] || 0) + b.w
+  }
+  const rows = Object.keys(pow)
+    .sort((p, q) => (+q === a.o) - (+p === a.o))
+    .map(o => row(S.F[o].em + ' ' + S.F[o].nm, ((pow[o] | 0) || 1) + ' 🦄'))
+  let def = ''
+  if (a.sg >= 0) {
+    const c = S.C[a.sg]
+    def = row('🏰 ' + c.nm + ' ' + S.F[c.o].em, (c.s | 0) + '/' + c.m + ' 🛡 · ' + c.d + ' ⚔️')
+  }
+  return `<h3 class=bt>${a.sg >= 0 ? '🏰 Siege' : '⚔️ Battle'}</h3>` + rows.join('') + def
+}
+
 const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`
 
 export function title () {
@@ -64,11 +116,19 @@ export function ending () {
 }
 export const clearOv = () => { ov.innerHTML = '' }
 
+addEventListener('input', e => {
+  if (!e.target || e.target.id !== 'sl') return
+  S.split = +e.target.value
+  const v = $('slv')
+  if (v) v.textContent = S.split
+})
+
 addEventListener('click', e => {
   const el = e.target.closest('[data-a]')
   if (!el) return
   const a = el.dataset.a, i = +el.dataset.i
   if (a === 'r') raise(i, S.me)
+  else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
   else if (a === 'f') fix(i, S.me)
   else if (a === 'v') S.speed = i
   else if (a === 's') hooks.start(i)

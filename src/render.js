@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog } from './sim.js'
+import { getArmy, prog, hop } from './sim.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -87,10 +87,24 @@ export function draw (dt) {
   if (sel && sel.k === 'a') {
     const a = getArmy(sel.i)
     if (a) {
-      for (const j of a.t < 0 ? S.C[a.a].n : [a.a]) {
-        const c = S.C[j]
+      if (a.t >= 0) {                                  // the way back
+        const c = S.C[a.a]
         x.beginPath(); x.arc(c.x, c.y, cityR(c) + 9, 0, 6.2832)
         x.fillStyle = '#ffffff12'; x.fill()
+      }
+      if (a.dst >= 0) {                                // the road still to walk
+        let at = a.t >= 0 ? a.t : a.a, n = 0
+        x.setLineDash([2, 6]); x.lineWidth = 2; x.strokeStyle = '#e8e4f5aa'
+        x.beginPath(); x.moveTo(a.rx, a.ry); x.lineTo(S.C[at].x, S.C[at].y)
+        while (at !== a.dst && n++ < 20) {
+          const h = hop(at, a.dst)
+          if (h < 0) break
+          x.lineTo(S.C[h].x, S.C[h].y); at = h
+        }
+        x.stroke(); x.setLineDash([])
+        const d = S.C[a.dst]
+        x.beginPath(); x.arc(d.x, d.y, cityR(d) + 9, 0, 6.2832)
+        x.fillStyle = '#ffffff18'; x.fill()
       }
     }
   }
@@ -103,6 +117,10 @@ export function draw (dt) {
     x.strokeStyle = k; x.lineWidth = 2.5; x.stroke()
     ring(c.x, c.y, r + 5, Math.max(0, c.s) / c.m, k + '99', 3)
     label(c.cap ? '👑' : '🏰', c.x, c.y + 1, r * 1.1)
+    if (c.mu) {
+      ring(c.x, c.y, r + 9, 1 - c.mu / T.muster, '#ffd76a', 2)
+      label('⏳', c.x + r + 6, c.y - r - 2, 12)
+    }
     label(c.nm, c.x, c.y + r + 16, 11, '#e8e4f5cc')
     label('👥' + (c.p | 0) + '  🛡' + (c.s | 0), c.x, c.y + r + 28, 10, '#e8e4f588')
     if (sel && sel.k === 'c' && sel.i === i) {
@@ -122,6 +140,23 @@ export function draw (dt) {
     if (sel && sel.k === 'a' && sel.i === a.id) {
       x.setLineDash([3, 3]); x.beginPath(); x.arc(p.x, p.y, 17, 0, 6.2832)
       x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke(); x.setLineDash([])
+    }
+  }
+
+  // whoever is locked in the selected host's fight
+  if (sel && sel.k === 'a') {
+    const a = getArmy(sel.i)
+    if (a && a.eg) {
+      x.setLineDash([3, 3]); x.lineWidth = 2; x.strokeStyle = '#ff5a5a'
+      for (const id of a.eg) {
+        const b = getArmy(id)
+        if (b) { x.beginPath(); x.arc(b.rx, b.ry, 16, 0, 6.2832); x.stroke() }
+      }
+      if (a.sg >= 0) {
+        const c = S.C[a.sg]
+        x.beginPath(); x.arc(c.x, c.y, cityR(c) + 7, 0, 6.2832); x.stroke()
+      }
+      x.setLineDash([])
     }
   }
 

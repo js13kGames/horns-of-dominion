@@ -28,7 +28,9 @@ export const T = {
   raiseW: 40,       // warriors produced
   minPop: 55,       // pop floor to allow raising
   repair: 2,        // gold per point of wall repaired
-  repairStep: 10,   // points per repair click
+  repairStep: 10,   // points per repair order
+  muster: 6 / P,    // ticks to raise a warband — about one road crossing
+  fixRate: 10 / 3 * P, // wall points rebuilt per tick once paid for
   speed: 26 * P,    // world units an army covers per tick
   reach: 18,        // contact range: armies this close on a road engage
   atk: 0.06 * P,    // field-battle attrition coefficient
@@ -37,7 +39,8 @@ export const T = {
   garrison: 0.35,   // wall fraction restored to the captor
   sack: 0.75,       // pop multiplier on capture
   mend: 0.15 * P,   // passive wall regen per tick
-  rout: 0.35,       // AI retreats below this share of its starting stack
+  flee: 0.25,       // share of a host lost when it breaks contact
+  odds: 0.7,        // a host disengages below this share of the enemy's strength
   aiHoard: 1.5,     // AI raises once gold > raiseG * aiHoard
   aiEvery: 1 / P,   // ticks between AI turns — scales with pace, or the AI
                     // would get ten times as many decisions per unit of war
@@ -49,12 +52,12 @@ export const T = {
 // --- game state -----------------------------------------------------------
 export const S = {
   C: [],      // cities  {x,y,nm,o,p,d,e,s,m,n[]}
-  A: [],      // armies  {o,w,a,t,pr,w0}
+  A: [],      // armies  {o,w,a,t,pr,st}
   F: [],      // factions{g,c,em,nm,ai,alive}
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
   log: [],
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, split: 1
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)

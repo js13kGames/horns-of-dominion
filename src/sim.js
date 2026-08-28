@@ -16,40 +16,90 @@ const along = (a, pr) => a.a < a.t ? pr * span(a) : (1 - pr) * span(a)
 export const prog = a => a.t < 0 ? 1
   : Math.min(1, a.pr + (a.st ? 0 : S.alpha * T.speed / span(a)))
 
+// next step on a shortest path from -> to, by hop count. 20 nodes: BFS is plenty.
+export function hop (from, to) {
+  if (from === to) return -1
+  const prev = new Array(NC).fill(-2)
+  prev[from] = -1
+  const q = [from]
+  for (let h = 0; h < q.length; h++) {
+    for (const v of S.C[q[h]].n) {
+      if (prev[v] !== -2) continue
+      prev[v] = q[h]
+      if (v === to) { let x = v; while (prev[x] !== from) x = prev[x]; return x }
+      q.push(v)
+    }
+  }
+  return -1
+}
+
 // ---- player / AI actions -------------------------------------------------
 export const canRaise = (i, f) => {
   const c = S.C[i]
-  return c.o === f && c.p >= T.minPop && S.F[f].g >= T.raiseG
+  return c.o === f && !c.mu && c.p >= T.minPop && S.F[f].g >= T.raiseG
 }
+// gold and populace are spent now; the warriors take T.muster ticks to gather
 export function raise (i, f) {
   if (!canRaise(i, f)) return 0
   const c = S.C[i]
   S.F[f].g -= T.raiseG
   c.p -= T.raiseP
-  const ex = at(i).find(a => a.o === f)
-  if (ex) ex.w += T.raiseW
-  else S.A.push({ id: nextId++, o: f, w: T.raiseW, a: i, t: -1, pr: 0, w0: T.raiseW, st: 0 })
+  c.mu = T.muster
   return 1
+}
+function mustered (i) {
+  const c = S.C[i]
+  const ex = at(i).find(a => a.o === c.o && !a.hold)
+  if (ex) ex.w += T.raiseW
+  else S.A.push({ id: nextId++, o: c.o, w: T.raiseW, a: i, t: -1, pr: 0, st: 0, dst: -1 })
 }
 
 export const canFix = (i, f) => {
   const c = S.C[i]
-  return c.o === f && c.s < c.m && S.F[f].g >= T.repair * T.repairStep
+  return c.o === f && c.s + c.rp < c.m && S.F[f].g >= T.repair * T.repairStep
 }
+// masons are paid now; the stone goes up at T.fixRate a tick
 export function fix (i, f) {
   if (!canFix(i, f)) return 0
   S.F[f].g -= T.repair * T.repairStep
-  S.C[i].s = Math.min(S.C[i].m, S.C[i].s + T.repairStep)
+  S.C[i].rp += T.repairStep
   return 1
 }
 
-const turn = a => { const b = a.a; a.a = a.t; a.t = b; a.pr = 1 - a.pr; a.w0 = a.w; a.st = 0 }
+const turn = a => { const b = a.a; a.a = a.t; a.t = b; a.pr = 1 - a.pr; a.st = 0 }
+// breaking contact is paid for in warriors; walking away from an empty road is free
+const flee = a => { a.w *= 1 - T.flee; turn(a) }
+// strength on each side of a fight, so a host can judge whether staying is madness
+const odds = g => {
+  const pow = {}
+  for (const a of g) pow[a.o] = (pow[a.o] || 0) + a.w
+  const all = Object.values(pow).reduce((x, y) => x + y, 0)
+  return a => pow[a.o] < (all - pow[a.o]) * T.odds
+}
+
+// a host resting at a city can be divided; both halves are `hold`, so they will
+// not immediately re-merge into the stack they were just split out of
+export const canSplit = a => !!a && a.t < 0 && !a.st && a.w >= 2
+export function split (a, n) {
+  if (!canSplit(a)) return 0
+  n = Math.max(1, Math.min(Math.round(n), Math.floor(a.w) - 1))
+  a.w -= n
+  a.hold = 1
+  S.A.push({ id: nextId++, o: a.o, w: n, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1 })
+  return 1
+}
 
 export function order (a, j) {
-  if (!a) return 0
-  if (a.t >= 0) { if (j !== a.a) return 0; turn(a); return 1 }   // marching: only turning back
-  if (!S.C[a.a].n.includes(j)) return 0
-  a.t = j; a.pr = 0; a.st = 0
+  if (!a || j < 0) return 0
+  if (a.t >= 0) {
+    if (j === a.a) { a.st ? flee(a) : turn(a); a.dst = -1; return 1 }   // turn back
+    a.dst = j                                    // re-paths when this leg lands
+    return 1
+  }
+  if (j === a.a) return 0
+  const h = S.C[a.a].n.includes(j) ? j : hop(a.a, j)
+  if (h < 0) return 0
+  a.dst = j; a.t = h; a.pr = 0; a.st = 0; a.hold = 0
   return 1
 }
 
@@ -86,7 +136,7 @@ function lanes () {
 }
 
 function roads () {
-  for (const a of S.A) a.st = 0
+  for (const a of S.A) { a.st = 0; a.eg = null; a.sg = -1 }
 
   // hosts that meet on the same road lock together and fight where they stand
   for (const g of Object.values(lanes())) {
@@ -98,14 +148,14 @@ function roads () {
       const cl = g.slice(i, j + 1)
       if (new Set(cl.map(a => a.o)).size > 1) {
         melee(cl, 0, -1)
-        for (const a of cl) a.st = 1
+        const ids = cl.map(z => z.id)
+        for (const a of cl) { a.st = 1; a.eg = ids }
         const lo = S.C[Math.min(cl[0].a, cl[0].t)], hi = S.C[Math.max(cl[0].a, cl[0].t)]
         const f = (pos[i] + pos[j]) / 2 / dist(lo, hi)
         boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
         shattered(cl)
-        for (const a of cl) {                  // a broken AI host turns and runs
-          if (S.F[a.o].ai && a.w > 0.5 && a.w <= a.w0 * T.rout) turn(a)
-        }
+        const losing = odds(cl)                // an outmatched AI host turns and runs
+        for (const a of cl) if (S.F[a.o].ai && a.w > 0.5 && losing(a)) flee(a)
       }
       i = j + 1
     }
@@ -141,9 +191,11 @@ export function tick () {
     for (const c of S.C) if (c.o === f) e += c.e
     S.F[f].g += e * T.inc
   }
-  for (const c of S.C) {
+  for (let i = 0; i < NC; i++) {
+    const c = S.C[i]
     const cap = 100 + c.e * 10
     if (c.p < cap) c.p += (cap - c.p) * T.grow
+    if (c.mu && !--c.mu) mustered(i)
   }
 
   // 2. road battles, then movement
@@ -154,8 +206,8 @@ export function tick () {
     const here = at(i)
     for (let u = 0; u < here.length; u++) {
       for (let v = u + 1; v < here.length; v++) {
-        if (here[u].o !== here[v].o || here[v].w <= 0) continue
-        here[u].w += here[v].w; here[u].w0 += here[v].w0; here[v].w = 0
+        if (here[u].o !== here[v].o || here[v].w <= 0 || here[u].hold || here[v].hold) continue
+        here[u].w += here[v].w; here[v].w = 0
       }
     }
   }
@@ -170,12 +222,15 @@ export function tick () {
 
     if (sides.length > 1) {
       melee(here, sides.includes(c.o) ? c.d * 0.5 : 0, c.o)
+      const ids = here.map(z => z.id)
+      for (const a of here) { a.eg = ids; a.sg = sides.includes(c.o) ? i : -1 }
       boom(c.x, c.y, 1)
       shattered(here)
-      for (const a of here) {                  // AI routs to a quiet neighbour
-        if (!S.F[a.o].ai || a.w <= 0.5 || a.w > a.w0 * T.rout) continue
+      const losing = odds(here)                // AI routs to a quiet neighbour
+      for (const a of here) {
+        if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
         const safe = c.n.find(j => S.C[j].o === a.o && !at(j).some(b => b.o !== a.o))
-        if (safe !== undefined) { a.t = safe; a.pr = 0; a.w0 = a.w }
+        if (safe !== undefined) { a.w *= 1 - T.flee; a.t = safe; a.pr = 0; a.hold = 0 }
       }
       S.A = S.A.filter(a => a.w > 0.5)
       continue
@@ -186,6 +241,8 @@ export function tick () {
 
     // 5. siege
     const force = here.reduce((n, a) => n + a.w, 0)
+    const sids = here.map(z => z.id)
+    for (const a of here) { a.eg = sids; a.sg = i }
     const loss = T.sgLoss * c.d
     for (const a of here) a.w -= loss * (a.w / force)
     c.s -= force * T.sgDmg * (1 + S.tick / T.escal)   // long wars grind walls faster
@@ -194,17 +251,33 @@ export function tick () {
       c.o = f
       c.p *= T.sack
       c.s = c.m * T.garrison
-      for (const a of at(i)) a.w0 = a.w
+      c.mu = c.rp = 0                            // the half-raised host scatters
       boom(c.x, c.y, 2, S.F[f].c)
       say(S.F[f].em + ' ' + c.nm + ' falls' + (old >= 0 ? ' from ' + S.F[old].em : ''))
     }
     S.A = S.A.filter(a => a.w > 0.5)
   }
 
-  // 6. walls slowly mend where nobody is besieging
+  // 5b. hosts with somewhere further to be march on — unless there is work here
+  for (const a of S.A) {
+    if (a.t >= 0 || a.dst < 0) continue
+    if (a.dst === a.a) { a.dst = -1; continue }
+    if (S.C[a.a].o !== a.o) continue                                   // finish the siege
+    if (S.A.some(b => b !== a && b.t < 0 && b.a === a.a && b.o !== a.o)) continue
+    const h = hop(a.a, a.dst)
+    if (h < 0) { a.dst = -1; continue }
+    a.t = h; a.pr = 0; a.hold = 0
+  }
+
+  // 6. paid repairs and passive mending, both halted while enemies are at the gates
   for (let i = 0; i < NC; i++) {
     const c = S.C[i]
-    if (c.s < c.m && !at(i).some(a => a.o !== c.o)) c.s = Math.min(c.m, c.s + T.mend)
+    if (c.s >= c.m || at(i).some(a => a.o !== c.o)) continue
+    if (c.rp) {
+      const d = Math.min(c.rp, T.fixRate)
+      c.s = Math.min(c.m, c.s + d); c.rp -= d
+    }
+    c.s = Math.min(c.m, c.s + T.mend)
   }
 
   // 7. victory

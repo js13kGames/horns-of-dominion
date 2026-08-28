@@ -7,7 +7,10 @@ const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o =
 // one faction acts per tick, round-robin, so cost stays flat
 export function ai () {
   if (S.tick % T.aiEvery) return
-  const f = ((S.tick / T.aiEvery) | 0) % S.F.length
+  // rotate who goes last each cycle: acting last means acting on the freshest
+  // board, and a fixed order hands that advantage to the same realm every time
+  const slot = (S.tick / T.aiEvery) | 0
+  const f = (slot + ((slot / S.F.length) | 0)) % S.F.length
   const F = S.F[f]
   if (!F.ai || !F.alive) return
   const mine = S.C.map((c, i) => i).filter(i => S.C[i].o === f)
@@ -19,8 +22,9 @@ export function ai () {
   // eventually field a host big enough to actually finish — no eternal see-saw
   if (F.g > T.raiseG * T.aiHoard && host < mine.length * T.aiCap * (1 + S.tick / T.escal)) {
     const safe = mine.filter(i => !S.C[i].n.some(j => force(j, f) > 0))
-    const pool = (safe.length ? safe : mine).sort((a, b) => S.C[b].p - S.C[a].p)[0]
-    if (canRaise(pool, f)) raise(pool, f)
+    const pool = (safe.length ? safe : mine)
+      .sort((a, b) => S.C[b].p - S.C[a].p).find(i => canRaise(i, f))
+    if (pool !== undefined) raise(pool, f)
   }
 
   const idle = S.A.filter(a => a.o === f && a.t < 0)
@@ -29,7 +33,7 @@ export function ai () {
   const hit = mine.find(i => force(i, f) > 0)
   if (hit !== undefined) {
     const help = idle.find(a => a.a !== hit && S.C[a.a].n.includes(hit) && a.w > force(hit, f) * 0.8)
-    if (help) { order(help, hit); help.w0 = help.w; return }
+    if (help) { order(help, hit); return }
   }
 
   // otherwise take ground. a long war makes everyone bolder, so borders never freeze
@@ -51,7 +55,7 @@ export function ai () {
       }
       if (s > bs) { bs = s; best = j }
     }
-    if (best >= 0) { order(a, best); a.w0 = a.w; return }
+    if (best >= 0) { order(a, best); return }
   }
 
   // nothing to do with the spare gold: shore up the weakest frontier wall
