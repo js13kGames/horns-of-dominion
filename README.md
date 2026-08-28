@@ -18,12 +18,16 @@ warband · ✖ Cancel (or `esc`) disarms targeting, so you can inspect cities fr
 it; you see a road only while it touches your land or one of your hosts is on it. Roads
 and city positions are always drawn — they just go grey, along with the banner and every
 number behind them. The fog closes again the moment a host withdraws, and enemy warbands
-in the dark are not drawn at all. The AI plays with full information.
+in the dark are not drawn at all — and neither are battles fought there: no clash
+markers, no capture flashes, no log entries for events beyond your reach. The AI plays
+with full information.
 
 Hosts that meet on the same road stop and fight where they stand, and anyone else
 arriving on that road joins the melee. Sieges only start once the road is clear.
 Breaking off a fight costs a quarter of the host, so committing means something.
-Mustering warriors and rebuilding walls are paid for up front but take time.
+Mustering warriors and rebuilding walls are paid for up front but take time, and a
+freshly sacked city loses most of its populace and is too cowed to conscript for a
+while. Cities under attack pulse red, and you are notified when one of yours is hit.
 A realm reduced to its last two cities starts to crumble — walls shed, hosts melt —
 and fortification upkeep decays as a war drags on, so no siege lasts forever.
 

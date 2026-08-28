@@ -37,7 +37,8 @@ export const T = {
   sgLoss: 0.15 * P, // attacker losses per tick = sgLoss * city.d
   sgDmg: P / 12,    // wall damage per tick per warrior
   garrison: 0.35,   // wall fraction restored to the captor
-  sack: 0.75,       // pop multiplier on capture
+  sack: 0.45,       // pop multiplier on capture — a sacking hurts
+  occupy: 18 / P,   // ticks a taken city is too cowed to conscript
   mend: 0.15 * P,   // passive wall regen per tick
   flee: 0.25,       // share of a host lost when it breaks contact
   odds: 0.7,        // a host disengages below this share of the enemy's strength
@@ -56,8 +57,8 @@ export const T = {
 export const D = [
   { nm: 'Dreamer', inc: 0.5, acts: 1, cap: 0.5 },
   { nm: 'Duelist', inc: 1, acts: 1, cap: 1 },
-  { nm: 'Warlord', inc: 1.4, acts: 2, cap: 1.3 },
-  { nm: 'Tyrant', inc: 2, acts: 3, cap: 1.7 }
+  { nm: 'Warlord', inc: 1.6, acts: 2, cap: 1.45 },
+  { nm: 'Tyrant', inc: 2.3, acts: 3, cap: 1.9 }
 ]
 export const applyDiff = () => S.F.forEach(f => { f.dm = f.ai ? D[S.diff] : D[1] })
 
@@ -69,11 +70,13 @@ export const S = {
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
   log: [],
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, split: 1, aim: 0, diff: 2,
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, toast: '', toastT: 0, split: 1, aim: 0, diff: 2,
   stat: { took: 0, lost: 0, slain: 0, most: 0 }
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
 export const owned = f => S.C.filter(c => c.o === f)
 export function say (msg) { S.log.unshift(msg); S.log.length = Math.min(S.log.length, 4) }
+// something the player must not miss: the log, plus a toast across the top
+export function note (msg) { say(msg); S.toast = msg; S.toastT = 4 }
 export function boom (x, y, k, c) { S.fx.push({ x, y, k, c, l: 1 }) }

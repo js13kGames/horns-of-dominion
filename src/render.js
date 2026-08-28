@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop, seeCity, seeRoad, seeArmy } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged } from './sim.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -128,6 +128,13 @@ export function draw (dt) {
     if (c.mu && c.o === S.me) {
       ring(c.x, c.y, r + 9, 1 - c.mu / T.muster, '#ffd76a', 2)
       label('⏳', c.x + r + 6, c.y - r - 2, 12)
+    }
+    if (lit && besieged(i)) {                  // a city under attack keeps pulsing
+      const q = 0.5 + 0.5 * Math.sin(S.elapsed * 6)
+      x.globalAlpha = 0.25 + q * 0.55
+      x.beginPath(); x.arc(c.x, c.y, r + 11 + q * 5, 0, 6.2832)
+      x.strokeStyle = '#ff5a5a'; x.lineWidth = 2.5; x.stroke()
+      x.globalAlpha = 1
     }
     label(c.nm, c.x, c.y + r + 16, 11, lit ? '#e8e4f5cc' : '#e8e4f566')
     label(lit ? '👥' + (c.p | 0) + '  🛡' + (c.s | 0) : '🌫️', c.x, c.y + r + 28, 10, '#e8e4f588')

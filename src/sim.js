@@ -1,4 +1,4 @@
-import { S, T, WIN, NC, rnd, rf, dist, say, boom } from './state.js'
+import { S, T, WIN, NC, rnd, rf, dist, say, note, boom } from './state.js'
 
 let nextId = 1
 export const getArmy = id => S.A.find(a => a.id === id)
@@ -20,6 +20,7 @@ export const prog = a => a.t < 0 ? 1
 // purely derived: a reveal lasts only while a host is there, so there is no
 // discovered-state to store, reset, or keep in sync. geography always draws.
 const myAt = i => at(i).some(a => a.o === S.me)
+export const besieged = i => at(i).some(a => a.o !== S.C[i].o)
 export const seeCity = i => {
   const c = S.C[i]
   return c.o === S.me || myAt(i) || c.n.some(j => S.C[j].o === S.me)
@@ -52,7 +53,7 @@ export function hop (from, to) {
 // ---- player / AI actions -------------------------------------------------
 export const canRaise = (i, f) => {
   const c = S.C[i]
-  return c.o === f && !c.mu && c.p >= T.minPop && S.F[f].g >= T.raiseG
+  return c.o === f && !c.mu && !c.oc && c.p >= T.minPop && S.F[f].g >= T.raiseG
 }
 // gold and populace are spent now; the warriors take T.muster ticks to gather
 export function raise (i, f) {
@@ -137,11 +138,11 @@ function melee (g, gd, gf) {
   for (const [a, d] of hit) a.w -= d
 }
 
-const shattered = g => {
+const shattered = (g, vis) => {
   for (const a of g) {
     if (a.w > 0.5) continue
     if (a.o !== S.me) S.stat.slain++
-    if (S.F[a.o].ai) say('💀 ' + S.F[a.o].em + ' host is shattered')
+    if (vis && S.F[a.o].ai) say('💀 ' + S.F[a.o].em + ' host is shattered')
   }
 }
 
@@ -167,10 +168,11 @@ function roads () {
         melee(cl, 0, -1)
         const ids = cl.map(z => z.id)
         for (const a of cl) { a.st = 1; a.eg = ids }
-        const lo = S.C[Math.min(cl[0].a, cl[0].t)], hi = S.C[Math.max(cl[0].a, cl[0].t)]
+        const li = Math.min(cl[0].a, cl[0].t), hj = Math.max(cl[0].a, cl[0].t)
+        const lo = S.C[li], hi = S.C[hj], vis = seeRoad(li, hj)
         const f = (pos[i] + pos[j]) / 2 / dist(lo, hi)
-        boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
-        shattered(cl)
+        if (vis) boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
+        shattered(cl, vis)
         const losing = odds(cl)                // an outmatched AI host turns and runs
         for (const a of cl) if (S.F[a.o].ai && a.w > 0.5 && losing(a)) flee(a)
       }
@@ -213,6 +215,7 @@ export function tick () {
     const cap = 100 + c.e * 10
     if (c.p < cap) c.p += (cap - c.p) * T.grow
     if (c.mu && !--c.mu) mustered(i)
+    if (c.oc) c.oc--
   }
 
   // 2. road battles, then movement
@@ -241,8 +244,9 @@ export function tick () {
       melee(here, sides.includes(c.o) ? c.d * 0.5 : 0, c.o)
       const ids = here.map(z => z.id)
       for (const a of here) { a.eg = ids; a.sg = sides.includes(c.o) ? i : -1 }
-      boom(c.x, c.y, 1)
-      shattered(here)
+      const vis = seeCity(i)
+      if (vis) boom(c.x, c.y, 1)
+      shattered(here, vis)
       const losing = odds(here)                // AI routs to a quiet neighbour
       for (const a of here) {
         if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
@@ -271,8 +275,11 @@ export function tick () {
       c.p *= T.sack
       c.s = c.m * T.garrison
       c.mu = c.rp = 0                            // the half-raised host scatters
-      boom(c.x, c.y, 2, S.F[f].c)
-      say(S.F[f].em + ' ' + c.nm + ' falls' + (old >= 0 ? ' from ' + S.F[old].em : ''))
+      c.oc = T.occupy                            // a cowed city conscripts nobody
+      if (seeCity(i)) {
+        boom(c.x, c.y, 2, S.F[f].c)
+        say(S.F[f].em + ' ' + c.nm + ' falls' + (old >= 0 ? ' from ' + S.F[old].em : ''))
+      }
     }
     S.A = S.A.filter(a => a.w > 0.5)
   }
@@ -308,6 +315,19 @@ export function tick () {
     for (const a of S.A) if (a.o === f) a.w -= a.w * T.starve   // no realm left to feed them
   }
   S.A = S.A.filter(a => a.w > 0.5)
+
+  // 6c. tell the player when something of theirs comes under attack, once each
+  for (let i = 0; i < NC; i++) {
+    const c = S.C[i], hit = c.o === S.me && besieged(i)
+    if (hit && !c.wn) note('⚠️ ' + c.nm + ' is under attack!')
+    c.wn = hit ? 1 : 0
+  }
+  for (const a of S.A) {
+    if (a.o !== S.me) continue
+    const hit = !!a.eg && a.eg.some(id => { const b = getArmy(id); return b && b.o !== a.o })
+    if (hit && !a.wn) note('⚠️ Your warband is under attack!')
+    a.wn = hit ? 1 : 0
+  }
 
   // 7. victory
   for (const a of S.A) if (a.o === S.me && a.w > S.stat.most) S.stat.most = a.w

@@ -244,12 +244,65 @@ tap(S.A[0].rx, S.A[0].ry)
 ok(!S.sel, 'an enemy host in the fog cannot be selected')
 S.A = []; S.speed = 1
 
+// --- fog hides events, not just terrain -----------------------------------
+const ticks = n => { S.speed = 8; for (let k = 0; k < n; k++) step(1, 100); S.speed = 1 }
+const host = (id, o, at) => ({ id, o, w: 120, a: at, t: -1, pr: 0, st: 0, dst: -1, hold: 0 })
+
+// effects decay within a few frames, so sample every frame rather than at the end
+const watch = (at, n) => {
+  let hit = 0
+  S.speed = 8
+  for (let k = 0; k < n; k++) {
+    step(1, 100)
+    if (S.fx.some(f => Math.hypot(f.x - S.C[at].x, f.y - S.C[at].y) < 45)) hit = 1
+  }
+  S.speed = 1
+  return hit
+}
+
+S.fx = []; S.log = []; S.toast = ''
+S.A = [host(7001, 3, dark), host(7002, 4, dark)]
+ok(!watch(dark, 20), 'a battle in the fog draws no clash marker')
+ok(!S.log.some(l => l.includes(S.C[dark].nm)), 'and never reaches the log')
+
+S.fx = []; S.log = []
+S.A = [host(7003, 3, near), host(7004, 4, near)]
+ok(watch(near, 20), 'the same battle in sight does draw one')
+
+// --- being attacked is announced ------------------------------------------
+const town = S.C.findIndex(c => c.o === S.me)
+S.fx = []; S.log = []; S.toast = ''
+S.A = [host(7005, 3, town)]
+ticks(4)
+ok(/under attack/.test(S.toast), 'an attack on your city raises a notification')
+ok(/under attack/.test(els.toast.innerHTML), 'and the toast renders')
+ok(S.C[town].wn === 1, 'the city is flagged so it is not announced twice')
+
+// --- taking a city cows it -------------------------------------------------
+const prey = S.C.findIndex((c, i) => c.o !== S.me)
+S.C[prey].s = 0.4
+S.A = [host(7006, S.me, prey)]
+S.C[prey].p = 300
+const popWas = S.C[prey].p
+ticks(20)
+ok(S.C[prey].o === S.me, 'the city is taken')
+ok(S.C[prey].p < popWas * 0.6, `the sacking guts its populace (${popWas | 0} -> ${S.C[prey].p | 0})`)
+ok(S.C[prey].oc > 0, 'and it is left too cowed to conscript')
+S.F[S.me].g = 999
+S.sel = { k: 'c', i: prey }; step(1)
+ok(/Cowed/.test(els.pan.innerHTML), 'the panel says so')
+const before7 = S.A.length
+click('r', prey)
+ok(S.A.length === before7 && !S.C[prey].mu, 'and raising is refused there')
+S.A = []; S.fx = []; S.toast = ''
+
 // run to a conclusion
 S.speed = 8
 for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
 ok(/New kingdom/.test(els.ov.innerHTML), 'end screen renders')
 ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
+ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
 const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Unicorn Overlord'), 'restart returns to the title')

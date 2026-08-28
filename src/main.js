@@ -33,6 +33,7 @@ function frame (ts) {
     let guard = 0
     while (acc >= TICK && guard++ < 8) { acc -= TICK; tick(); ai() }
     S.alpha = Math.min(1, acc / TICK)
+    if (S.toastT > 0 && (S.toastT -= dt) <= 0) S.toast = ''
     if (S.over) ending()
   }
   draw(dt)

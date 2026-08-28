@@ -3,7 +3,7 @@ import { REALMS } from './map.js'
 import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
-const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov')
+const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov'), ts = $('toast')
 export const hooks = {}
 const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h } }
 const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' disabled'}>${txt}</button>`
@@ -20,6 +20,7 @@ export function ui () {
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
 
   set(lg, S.log.map(l => `<div>${l}</div>`).join(''))
+  set(ts, S.toast ? `<div>${S.toast}</div>` : '')
 
   const s = S.sel
   if (!s) return set(pan, '')
@@ -33,9 +34,11 @@ export function ui () {
       row('⚔️ Defense', lit ? c.d : q) +
       row('💎 Economy', lit ? c.e : q) +
       (own
-        ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.mu
-            ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
-            : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
+        ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.oc
+            ? `🔒 Cowed — ${(c.oc / T.muster).toFixed(1)} musters`
+            : c.mu
+              ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
+              : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
           `${btn('f', s.i, canFix(s.i, S.me), c.rp
             ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
             : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
@@ -115,11 +118,10 @@ export function title () {
 }
 
 export function ending () {
-  const n = cnt(S.me), win = S.over > 0, t = S.stat
+  const win = S.over > 0, t = S.stat
   ov.innerHTML = `<h1>${win ? '👑 The Rainbow Kingdom is yours' : '💀 Your banner falls'}</h1>` +
     `<p>${S.F[S.me].em} ${S.F[S.me].nm} · ${D[S.diff].nm} · ${(S.elapsed / 60) | 0}m ${(S.elapsed | 0) % 60}s</p>` +
     `<div class=tally>` +
-    `<div><b>${n}</b>/${NC}<span>cities held</span></div>` +
     `<div><b>${t.took}</b><span>🏰 taken</span></div>` +
     `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
     `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +

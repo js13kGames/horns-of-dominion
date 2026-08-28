@@ -73,3 +73,37 @@ Two things you should know:
 - The dev server you're looking at is the one from earlier, not a new one. My npm run dev hit EADDRINUSE and exited because the previous instance still held port 8080 — but that instance watches src/, so it rebuilt on every save. I checked the served page carries the fog code and its build timestamp matches the source mtimes exactly, so what you're seeing is current.
 
 The muster-ring restriction is render-only and isn't observable through the test stub, so that one is verified by reading the code rather than by assertion — worth a glance when you play.
+
+
+# Round 6
+## Topics
+1. Some events are not being hidden properly by the fog of war:
+- Battles happening still show the swords emoji effects
+- Effects when a city is converted to a color
+- Events happening beyond your reach (remove them) "host is shattered" "xxxx falls from yyy", save bytes
+- Events happening beyond your reach (remove them) "host is shattered" "xxxx falls from yyy", save bytes
+2. Add a notification when one of your cities or units is under attack.
+3. Add continuous pulsing effect when a city is being attacked
+4. Conquering a city should have a big hit on population and restrict conscription for some time
+5. Remove The cities held count in the end screen
+
+All five are in — reload http://localhost:8080 (the watching dev server has rebuilt).
+
+1. Fog now hides events, not just terrain. Clash markers, capture flashes and log lines are all gated on line of sight at the moment they happen. A battle in the dark produces nothing: no ⚔️, no shockwave, no "host is shattered", no "X falls from Y". The DOM test asserts both halves — a fight at a fogged city draws nothing and never reaches the log, while the same fight at a visible one does.
+
+2. Attack notifications. A red toast across the top plus a log line when one of your cities comes under attack or one of your warbands is caught in a fight. Edge-triggered with a per-entity flag, so you get told once per attack rather than every tick.
+
+3. Cities under attack pulse — a red ring breathing at ~1Hz, on any visible city with enemies at its gates. Fogged cities don't pulse, for the same reason they don't flash.
+
+4. Sacking hurts. A captured city keeps 45% of its populace (was 75%) and is left cowed for about three musters — the Raise button shows the countdown and refuses. This is the one item with balance consequences, so I measured it.
+
+5. Cities-held removed from the end screen.
+
+What the measurement turned up. The occupation lockout falls hardest on whoever expands fastest, which quietly compressed the difficulty ladder — Warlord dropped 47%→35%, Tyrant 66%→59%. That's a regression against a ladder I'd measured and reported, so I nudged the two upper rungs' economy and army-cap knobs once to restore it: 0 / 19 / 40 / 61, monotonic and well spread. Pacing across 1,200 games at the default rung: zero stalemates, p50 ~3,900 ticks (33 min at 1×, 4 min at 8×), p99 ~10,500, worst case 24k.
+
+Two silent failures worth naming, both in my own tooling:
+
+- The "Cowed" button label never actually landed — my scripted replacement didn't match the file and reported nothing. The DOM test caught it, and I re-applied it with a tool that errors on a miss instead of failing quietly. Same class of bug as the harness tick-cap and the falsy-zero rung from earlier rounds; I should stop using silent string replacement for edits like these.
+- dist-test.mjs crashed on the new #toast element because its stub only knew the five original element ids. That was a stub gap, not a product bug — the real page has the div — but it meant the shipped-artifact gate was failing while &&-chaining hid the exit code from me. The stub now creates elements on demand so it can't drift from index.html again.
+
+All six harnesses pass. 10,730 B zipped of 13,312, 2,582 B headroom.
