@@ -123,8 +123,9 @@ function melee (g, gd, gf) {
 
 const shattered = g => {
   for (const a of g) {
-    if (a.w > 0.5 || !S.F[a.o].ai) continue
-    say('💀 ' + S.F[a.o].em + ' host is shattered')
+    if (a.w > 0.5) continue
+    if (a.o !== S.me) S.stat.slain++
+    if (S.F[a.o].ai) say('💀 ' + S.F[a.o].em + ' host is shattered')
   }
 }
 
@@ -189,7 +190,7 @@ export function tick () {
   for (let f = 0; f < S.F.length; f++) {
     let e = 0
     for (const c of S.C) if (c.o === f) e += c.e
-    S.F[f].g += e * T.inc
+    S.F[f].g += e * T.inc * S.F[f].dm.inc
   }
   for (let i = 0; i < NC; i++) {
     const c = S.C[i]
@@ -248,6 +249,8 @@ export function tick () {
     c.s -= force * T.sgDmg * (1 + S.tick / T.escal)   // long wars grind walls faster
     if (c.s <= 0) {
       const old = c.o
+      if (f === S.me) S.stat.took++
+      if (old === S.me) S.stat.lost++
       c.o = f
       c.p *= T.sack
       c.s = c.m * T.garrison
@@ -273,14 +276,25 @@ export function tick () {
   for (let i = 0; i < NC; i++) {
     const c = S.C[i]
     if (c.s >= c.m || at(i).some(a => a.o !== c.o)) continue
+    // masonry loses the race as the war drags on: a long siege eventually tells
+    const up = 1 / (1 + S.tick / T.escal)
     if (c.rp) {
-      const d = Math.min(c.rp, T.fixRate)
+      const d = Math.min(c.rp, T.fixRate * up)
       c.s = Math.min(c.m, c.s + d); c.rp -= d
     }
-    c.s = Math.min(c.m, c.s + T.mend)
+    c.s = Math.min(c.m, c.s + T.mend * up)
   }
 
+  // 6b. a realm down to its last holdings cannot keep its walls standing
+  for (let f = 0; f < S.F.length; f++) {
+    if (!S.F[f].alive || cnt(f) > T.dying) continue
+    for (const c of S.C) if (c.o === f) c.s = Math.max(0.5, c.s - T.rot)
+    for (const a of S.A) if (a.o === f) a.w -= a.w * T.starve   // no realm left to feed them
+  }
+  S.A = S.A.filter(a => a.w > 0.5)
+
   // 7. victory
+  for (const a of S.A) if (a.o === S.me && a.w > S.stat.most) S.stat.most = a.w
   for (let f = 0; f < S.F.length; f++) {
     const n = cnt(f)
     if (S.F[f].alive && !n && !S.A.some(a => a.o === f)) {

@@ -1,4 +1,4 @@
-import { S } from './state.js'
+import { S, applyDiff } from './state.js'
 import { genMap } from './map.js'
 import { tick, getArmy, order } from './sim.js'
 import { ai } from './ai.js'
@@ -18,6 +18,7 @@ function fresh () {
 hooks.start = f => {
   S.me = f
   S.F.forEach((x, i) => { x.ai = i !== f })
+  applyDiff()
   clearOv(); playing = 1; ui()
 }
 hooks.again = () => { fresh(); title(); playing = 0 }
@@ -50,11 +51,14 @@ cv.addEventListener('pointerdown', e => {
     const c = S.C[i]
     if (Math.hypot(c.x - p.x, c.y - p.y) < cityR(c) + 6) { hc = i; break }
   }
-  const s = S.sel
-  if (s && s.k === 'a' && hc >= 0) {
-    const a = getArmy(s.i)
-    if (a && a.o === S.me && order(a, hc)) { ui(); return }
+  if (S.aim) {                          // targeting: the next city is a destination
+    const a = getArmy(S.aim)
+    const to = hc >= 0 ? hc : ha && ha.t < 0 ? ha.a : -1
+    if (a && to >= 0) order(a, to)
+    S.aim = 0
+    return ui()
   }
+  // otherwise a click only ever selects — orders come from the panel
   S.sel = ha ? { k: 'a', i: ha.id } : hc >= 0 ? { k: 'c', i: hc } : null
   ui()
 })
@@ -66,7 +70,7 @@ addEventListener('keydown', e => {
   else if (k === '2') S.speed = 2
   else if (k === '3') S.speed = 4
   else if (k === '4') S.speed = 8
-  else if (k === 'Escape') S.sel = null
+  else if (k === 'Escape') { if (S.aim) S.aim = 0; else S.sel = null }
   ui()
 })
 

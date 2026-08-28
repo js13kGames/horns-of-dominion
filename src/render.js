@@ -109,6 +109,13 @@ export function draw (dt) {
     }
   }
 
+  // while mobilizing, every city is a legal destination — say so
+  if (S.aim) {
+    x.setLineDash([3, 3]); x.lineWidth = 1.5; x.strokeStyle = '#ffffff55'
+    for (const c of S.C) { x.beginPath(); x.arc(c.x, c.y, cityR(c) + 7, 0, 6.2832); x.stroke() }
+    x.setLineDash([])
+  }
+
   // cities
   for (let i = 0; i < S.C.length; i++) {
     const c = S.C[i], r = cityR(c), k = col(c.o)

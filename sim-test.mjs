@@ -1,14 +1,16 @@
 // headless balance harness — not shipped
-import { S, NC, WIN } from './src/state.js'
+import { S, NC, WIN, D } from './src/state.js'
 import { genMap } from './src/map.js'
 import { tick, cnt } from './src/sim.js'
 import { ai } from './src/ai.js'
 
 let wins = {}, lens = [], stuck = 0
-for (let g = 0; g < 400; g++) {
+for (let g = 0; g < (+process.argv[4] || 400); g++) {
   genMap((+process.argv[2] || 1000) + g)
   S.me = 0
   S.F.forEach(f => { f.ai = 1 })   // all-AI: does anyone ever win?
+  const rung = process.argv[3] === undefined ? 2 : +process.argv[3]
+  S.F.forEach(f => { f.dm = D[rung] })   // every realm on the same rung
   // sanity on generation
   const deg = S.C.map(c => c.n.length)
   if (Math.min(...deg) < 1) console.log('game', g, 'ISOLATED NODE')

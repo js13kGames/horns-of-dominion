@@ -1,6 +1,6 @@
-import { S, T, WIN, NC } from './state.js'
+import { S, T, WIN, NC, D } from './state.js'
 import { REALMS } from './map.js'
-import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, prog } from './sim.js'
+import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov')
@@ -42,7 +42,7 @@ export function ui () {
   }
 
   const a = getArmy(s.i)
-  if (!a) { S.sel = null; return set(pan, '') }
+  if (!a) { S.sel = null; S.aim = 0; return set(pan, '') }
   const mine = a.o === S.me
   set(pan, '<h3>🦄 Warband</h3>' +
     row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
@@ -52,15 +52,17 @@ export function ui () {
       : `at ${S.C[a.a].nm}`) +
     (a.dst >= 0 && a.dst !== a.t ? row('Bound for', S.C[a.dst].nm) : '') +
     (mine
-      ? `<div class=hint>${a.t < 0
-          ? 'Click any city to march there.'
-          : a.st
-            ? `Click the node behind to break off — costs ${T.flee * 100 | 0}% of the host.`
-            : 'Click the node behind to turn back, or any city to re-route.'}</div>` +
+      ? `<div class=acts>` +
+        (S.aim === a.id ? btn('k', 0, 1, '✖ Cancel') : btn('m', 0, 1, '🎯 Mobilize')) +
+        (a.t >= 0
+          ? btn('b', 0, 1, `↩ Turn back${a.st ? ` — ⚠️ ${T.flee * 100 | 0}% lost` : ''}`)
+          : '') +
         (canSplit(a)
-          ? `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
-            `${btn('x', 0, 1, '✂️ Split off')}</div>`
-          : '')
+          ? `<div class=sr><input type=range id=sl><b id=slv></b></div>${btn('x', 0, 1, '✂️ Split off')}`
+          : '') +
+        `</div><div class=hint>${S.aim === a.id
+          ? '🎯 Choose a destination on the map.'
+          : 'Mobilize to march anywhere on the map.'}</div>`
       : '') +
     roster(a))
   sync(a)
@@ -102,17 +104,25 @@ const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`
 
 export function title () {
   ov.innerHTML = `<h1>🌈 Unicorn Overlord</h1>` +
-    `<p>The Rainbow Kingdom has ${NC} cities and no rightful ruler. Raise warbands, break walls, and hold ${WIN} of them.</p>` +
+    `<p>The Rainbow Kingdom has ${NC} cities and no rightful ruler. Raise warbands, break walls, and take every last one.</p>` +
+    `<div class=diff>${D.map((d, i) =>
+      `<button data-a=d data-i=${i} class="${S.diff === i ? 'on' : ''}">${d.nm}</button>`).join('')}</div>` +
     `<div class=realms>${REALMS.map(([nm, c, em], i) =>
       `<div class=realm data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n style=color:${c}>${nm}</div><div class=c>realm ${i + 1}</div></div>`).join('')}</div>` +
     `<p style=opacity:.4>space pauses · 1 2 3 set speed</p>`
 }
 
 export function ending () {
-  const n = cnt(S.me), win = S.over > 0
-  ov.innerHTML = `<h1>${win ? '👑 The Kingdom is yours' : '💀 Your banner falls'}</h1>` +
-    `<p>${S.F[S.me].em} ${S.F[S.me].nm} held ${n} of ${NC} cities after ${(S.elapsed / 60) | 0}m ${(S.elapsed | 0) % 60}s.</p>` +
-    `<button data-a=n>🌈 New kingdom</button>`
+  const n = cnt(S.me), win = S.over > 0, t = S.stat
+  ov.innerHTML = `<h1>${win ? '👑 The Rainbow Kingdom is yours' : '💀 Your banner falls'}</h1>` +
+    `<p>${S.F[S.me].em} ${S.F[S.me].nm} · ${D[S.diff].nm} · ${(S.elapsed / 60) | 0}m ${(S.elapsed | 0) % 60}s</p>` +
+    `<div class=tally>` +
+    `<div><b>${n}</b>/${NC}<span>cities held</span></div>` +
+    `<div><b>${t.took}</b><span>🏰 taken</span></div>` +
+    `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
+    `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
+    `<div><b>${t.most | 0}</b><span>🦄 largest host</span></div>` +
+    `</div><button data-a=n>🌈 New kingdom</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }
 
@@ -129,8 +139,12 @@ addEventListener('click', e => {
   const a = el.dataset.a, i = +el.dataset.i
   if (a === 'r') raise(i, S.me)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
+  else if (a === 'm') S.aim = S.sel && S.sel.i
+  else if (a === 'k') S.aim = 0
+  else if (a === 'b') { const h = getArmy(S.sel && S.sel.i); if (h) order(h, h.a) }
   else if (a === 'f') fix(i, S.me)
   else if (a === 'v') S.speed = i
+  else if (a === 'd') { S.diff = i; title() }
   else if (a === 's') hooks.start(i)
   else if (a === 'n') hooks.again()
   ui()

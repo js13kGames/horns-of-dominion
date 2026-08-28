@@ -1,6 +1,6 @@
 export const W = 1000, H = 700
-export const WIN = 14          // 70% of 20 cities
 export const NC = 20
+export const WIN = NC          // total conquest: every city or nothing
 
 // --- seeded rng -----------------------------------------------------------
 let s0 = 1
@@ -46,8 +46,20 @@ export const T = {
                     // would get ten times as many decisions per unit of war
   aiCap: 55,        // AI stops mustering above this many warriors per city held
   bold: 4000 / P,   // AI aggression doubles every this many ticks
+  dying: 2,         // a realm down to this many cities starts to crumble
+  rot: 0.5 * P,     // wall points its holdings shed per tick while crumbling
+  starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
   escal: 5000 / P   // sieges grind faster every this many ticks
 }
+
+// --- difficulty: AI-only multipliers on economy, decisions per turn, army cap ---
+export const D = [
+  { nm: 'Dreamer', inc: 0.5, acts: 1, cap: 0.5 },
+  { nm: 'Duelist', inc: 1, acts: 1, cap: 1 },
+  { nm: 'Warlord', inc: 1.4, acts: 2, cap: 1.3 },
+  { nm: 'Tyrant', inc: 2, acts: 3, cap: 1.7 }
+]
+export const applyDiff = () => S.F.forEach(f => { f.dm = f.ai ? D[S.diff] : D[1] })
 
 // --- game state -----------------------------------------------------------
 export const S = {
@@ -57,7 +69,8 @@ export const S = {
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
   log: [],
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, split: 1
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, split: 1, aim: 0, diff: 2,
+  stat: { took: 0, lost: 0, slain: 0, most: 0 }
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)

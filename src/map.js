@@ -1,4 +1,4 @@
-import { S, W, H, NC, T, setSeed, rnd, ri, rf, pick, dist } from './state.js'
+import { S, W, H, NC, T, applyDiff, setSeed, rnd, ri, rf, pick, dist } from './state.js'
 
 const PRE = 'Prism Glim Star Moon Cloud Dew Sil Aur Lume Nim Sable Frost Ember Whis Thistle Bram Cinder Halo Zeph Opal Mir Vesp'.split(' ')
 const SUF = 'hold fell gate spire mere reach crest vale wick hallow'.split(' ')
@@ -49,7 +49,7 @@ export function genMap (sd) {
   S.A = []
   S.fx = []
   S.log = []
-  S.over = 0; S.sel = null; S.tick = 0; S.elapsed = 0; S.speed = 1
+  S.over = 0; S.sel = null; S.aim = 0; S.tick = 0; S.elapsed = 0; S.speed = 1
 
   // best-candidate sampling: even spread without min-distance failures
   for (let i = 0; i < NC; i++) {
@@ -156,5 +156,7 @@ export function genMap (sd) {
   }
 
   S.F = REALMS.map(([nm, c, em], i) => ({ nm, c, em, ai: i !== S.me, g: 60, alive: 1 }))
+  S.stat = { took: 0, lost: 0, slain: 0, most: 0 }
+  applyDiff()
   return S
 }

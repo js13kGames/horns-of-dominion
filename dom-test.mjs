@@ -57,6 +57,12 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
 ok(/Unicorn Overlord/.test(els.ov.innerHTML), 'title screen renders')
 ok(els.ov.innerHTML.split('class=realm ').length === 6, 'five realm cards offered')
 
+ok(/data-a=d/.test(els.ov.innerHTML), 'title offers difficulty rungs')
+click('d', 3)
+ok(S.diff === 3, 'picking a rung sets it')
+click('d', 2)
+ok(S.diff === 2, 'and the default rung is the third')
+
 click('s', 2)
 ok(S.me === 2 && !S.F[2].ai && !!S.F[0].ai, 'picking a realm sets the player faction')
 ok(els.ov.innerHTML === '', 'overlay cleared on start')
@@ -93,13 +99,31 @@ ok(S.A.length === n0 + 1, 'the warband appears once mustered')
 const army = S.A[S.A.length - 1]
 ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
-// select it and march to a neighbour
+// select it — and prove a stray click can no longer march it
 step(1)
 tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
 const dest = S.C[mine].n[0]
 tap(S.C[dest].x, S.C[dest].y)
-ok(army.t === dest, 'clicking a neighbour issues a march order')
+ok(army.t < 0, 'clicking a city with a warband selected does NOT move it')
+ok(S.sel.k === 'c' && S.sel.i === dest, 'it selects that city instead')
+
+// orders come from the panel now
+tap(army.rx, army.ry)
+click('m', 0)
+ok(S.aim === army.id, 'Mobilize arms targeting')
+tap(S.C[dest].x, S.C[dest].y)
+ok(army.t === dest && !S.aim, 'the next city click becomes the destination')
+
+step(1)
+tap(army.rx, army.ry)
+click('m', 0); ok(S.aim === army.id, 'Mobilize can be re-armed')
+click('k', 0); ok(!S.aim, 'Cancel disarms targeting')
+click('m', 0)
+win.h.keydown({ key: 'Escape' })
+ok(!S.aim && S.sel, 'Escape cancels targeting first')
+win.h.keydown({ key: 'Escape' })
+ok(!S.sel, 'and clears the selection on the second press')
 
 // interpolation: the drawn position must advance between ticks, not only on them
 step(1)
@@ -115,12 +139,14 @@ if (army.t >= 0) {
   S.sel = null
   tap(army.rx, army.ry)
   ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'a marching warband is clickable at its drawn spot')
+  step(1)
   const back = army.a
-  tap(S.C[back].x, S.C[back].y)
-  ok(army.t === back, 'clicking the node behind turns a marching warband around')
+  ok(/Turn back/.test(els.pan.innerHTML), 'a marching warband offers Turn back')
+  click('b', 0)
+  ok(army.t === back, 'Turn back reverses it')
 } else {
   ok(1, 'warband arrived before the turn-back check could run')
-  ok(1, '-')
+  ok(1, '-'); ok(1, '-')
 }
 
 // repair
@@ -161,8 +187,10 @@ click('x', 0)
 ok(S.A.length === 2 && S.A[0].w + S.A[1].w === 120, 'splitting conserves warriors')
 ok(S.A.every(a => a.hold), 'both halves are held apart')
 
+tap(h.rx, h.ry)
+click('m', 0)
 tap(S.C[far].x, S.C[far].y)
-ok(h.dst === far && h.t >= 0 && h.t !== far, 'clicking a far city sets a multi-hop march')
+ok(h.dst === far && h.t >= 0 && h.t !== far, 'mobilizing to a far city sets a multi-hop march')
 step(3)
 ok(/Bound for/.test(els.pan.innerHTML), 'the panel names the final destination')
 
@@ -184,6 +212,7 @@ S.speed = 8
 for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
 ok(/New kingdom/.test(els.ov.innerHTML), 'end screen renders')
+ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
 const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Unicorn Overlord'), 'restart returns to the title')

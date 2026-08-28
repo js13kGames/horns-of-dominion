@@ -1,0 +1,42 @@
+# Round 3
+
+## Topics
+1. fleeing a battle should have a cost in units dead (AI should consider this when deciding to fleeing).
+2. Allow traveling to a non-immediate node, keep the destination node for the unit and calculate the path to it.
+3. Allow splitting a warband when clicking on it into two, slider to decide quantities.
+4. Clicking a warband that is on a battle should display a small battle summary panel under the warband panel, including all the armies that are involved in the battle and their numbers OR if the warband is attacking a city, show the city as defenders. it should also add a red dotted circle around all the warbands in confict in the map.
+5. Raising an army should take some time, not happen immediately, same for rebuilding defenses.
+
+
+# Round 4
+
+## Topics
+1. It's easy to move unit by mistake when a unit is selected and I want to examine a city, and I have to antinaturally click "nothing" to deselect a unit and be able to select a city; I think we need an action to "Mobilize" from the warband panel when it's selected, which then requires selecting a city or canceling? It's either this or left click to select, right click to move, which loses us mobile.
+2. The ending was anticlimatic, I think an ending by total conquest is more satisfactory and should be doable.
+3. Is it possible to add difficulty levels for the AI? seems too easy right now.
+
+## Resolution
+
+1. Clicking never moves anything. A map click now means exactly one thing: select. Marching goes through 🎯 Mobilize on the warband panel, which arms targeting — the next city click is the destination, every city rings faintly to show the whole map is fair game, and Cancel or Esc backs out (Esc cancels targeting first, clears the selection on a second press). The node-behind-click for retreating went away with it, replaced by a proper ↩ Turn back button that shows the flee cost when you're engaged — strictly more discoverable, since nothing ever told you that trick existed. The DOM test now asserts the actual bug is fixed: clicking a city with a warband selected does not move it.
+
+2. Total conquest. All 20 cities. As the plan warned, this is where the pacing risk was, and it landed: p99 went to 69k ticks and one game hit 116k. Three forcing functions now close it out — a realm down to its last two cities sheds walls and starves its hosts (the turtling stack was the real blocker, not the walls), and fortification upkeep decays as a war drags on. The end screen also reports the campaign now: cities held, taken, lost, hosts broken, largest host, duration, rung.
+
+3. Four difficulty rungs — Dreamer / Duelist / Warlord (default) / Tyrant, scaling AI income, decisions per turn, and army ceiling. Your side is untouched. diff-test.mjs pits one rung against four Duelists over 150 games each:
+
+Dreamer   0.5  1   0.5     0.0%
+Duelist   1    1   1      19.0%     ← today's AI, and a fair share is 20%
+Warlord   1.4  2   1.3    47.0%     ← new default
+Tyrant    2    3   1.7    66.0%
+
+Duelist landing at 19% against an expected 20% is the check that the neutral rung really is neutral. The default is now roughly 2.4× the AI you found too easy, with Tyrant above that.
+
+Three bugs the measurements caught, all mine:
+
+- Gating the slow rung on slot parity looked fine but the slot→realm rotation meant some realms would get three times as many even-numbered turns as others. Replaced with a per-realm toggle.
+- My first Dreamer design (half the decisions) made all-Dreamer games stall — 28 stalemates in 400 — because nobody drove the war. Rebuilt as economically crippled but thinking at normal speed: 1 stalemate in 150, and still the weakest rung.
+- +process.argv[3] || 2 in the harness meant rung 0 silently ran as rung 2. Identical statistics to the digit gave it away.
+
+State now — 1,200 games at the default rung: zero stalemates, p50 3,610 ticks (30 min at 1×, 3.8 min at 8×), p99 ~10,000, 0.3% running long. Win rates flat across the realms. All six harnesses pass, including 45 DOM assertions. 10,104 B zipped of 13,312, 3,208 B headroom.
+
+Worth knowing: total conquest at Warlord actually finishes faster than 70% did against the old AI — a stronger AI plus the crumbling-realm rules make wars decisive rather than long. The thing I can't judge is whether Mobilize feels like one click too many in practice; that's the call to make while playing.
+

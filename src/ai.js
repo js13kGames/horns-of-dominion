@@ -4,7 +4,8 @@ import { raise, fix, order, canRaise, canFix } from './sim.js'
 const force = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o !== f ? a.w : 0), 0)
 const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o === f ? a.w : 0), 0)
 
-// one faction acts per tick, round-robin, so cost stays flat
+// one faction acts per turn, round-robin. how many decisions it gets on that
+// turn is what difficulty buys — along with gold and a bigger standing army.
 export function ai () {
   if (S.tick % T.aiEvery) return
   // rotate who goes last each cycle: acting last means acting on the freshest
@@ -13,6 +14,11 @@ export function ai () {
   const f = (slot + ((slot / S.F.length) | 0)) % S.F.length
   const F = S.F[f]
   if (!F.ai || !F.alive) return
+  let k = F.dm.acts
+  while (k-- > 0) step(f, F)
+}
+
+function step (f, F) {
   const mine = S.C.map((c, i) => i).filter(i => S.C[i].o === f)
   if (!mine.length) return
 
@@ -20,7 +26,8 @@ export function ai () {
   const host = S.A.reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
   // the cap lifts as the war drags on, so a faction that has won the economy can
   // eventually field a host big enough to actually finish — no eternal see-saw
-  if (F.g > T.raiseG * T.aiHoard && host < mine.length * T.aiCap * (1 + S.tick / T.escal)) {
+  if (F.g > T.raiseG * T.aiHoard &&
+      host < mine.length * T.aiCap * F.dm.cap * (1 + S.tick / T.escal)) {
     const safe = mine.filter(i => !S.C[i].n.some(j => force(j, f) > 0))
     const pool = (safe.length ? safe : mine)
       .sort((a, b) => S.C[b].p - S.C[a].p).find(i => canRaise(i, f))
