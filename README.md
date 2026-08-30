@@ -36,8 +36,9 @@ the coastline traces the convex hull of that seed's own 20 cities across 300 sam
 leaning slightly outward and roughened at three scales, so every kingdom gets its own
 ragged silhouette and none of them waste a band of empty grass. The sun is setting
 behind it: grassland catches the light, woods cover about seventy percent of the ground
-and run on under the roads and cities, mountains keep their distance, and bare rock
-falls away underneath in a broad cone. The whole backdrop bakes once per map into an
+and run on under the roads and cities, mountains stand out of the trees with a tree line
+crowding their feet, cloud drifts past behind the land, and bare rock falls away
+underneath in a broad cone. The whole backdrop bakes once per map into an
 offscreen canvas and costs one drawImage a frame.
 
 The map is procedural and seeded — the seed lives in the URL hash, so `#12345`

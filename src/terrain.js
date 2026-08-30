@@ -15,7 +15,7 @@ const rf = (a, b) => a + rn() * (b - a)
 
 const N = 300                // coastline samples — a broken, rocky edge
 const R = []                 // radius per sample, around the city centroid
-let cx = 0, cy = 0
+let cx = 0, cy = 0, TR = [], CL = []
 export const stars = []      // drawn live in screen space, so no window is ever starless
 
 const radAt = a => R[((((a / 6.2832 * N) | 0) % N) + N) % N]
@@ -127,40 +127,73 @@ export function paint () {
 
   g.save(); coast(g); g.clip()      // the low sun catching the clifftop
   coast(g); g.strokeStyle = '#c9975a'; g.lineWidth = 4; g.stroke()
+  g.restore()
 
   // Woods go down first and freely — they run under the roads and cities, which
-  // are drawn over the backdrop anyway, and the coast clip lets them reach the
-  // cliff edge without spilling into the void.
-  for (let k = 0, f = 0; k < 500 && f < 64; k++) {
+  // are drawn over the backdrop anyway. Blobs are dropped one by one rather than
+  // clipped, so no canopy is ever sliced off flat along the cliff.
+  TR = []
+  for (let k = 0, f = 0; k < 620 && f < 72; k++) {
     const px = rf(cx - 540, cx + 540), py = rf(cy - 420, cy + 420)
-    if (!inside(px, py, -14)) continue
+    if (!inside(px, py, -30)) continue
     f++
     wood(g, px, py, rf(30, 80))
   }
-  g.restore()
 
   // peaks are silhouettes, so they do keep their distance. Clearance is sized
   // to the feature, or a wide mountain placed by its base point still spills
   // its flank across a road.
   const put = []
   let n = 0
-  for (let k = 0; k < 300 && n < 5; k++) {
+  for (let k = 0; k < 700 && n < 5; k++) {
     const px = rf(cx - 470, cx + 470), py = rf(cy - 320, cy + 320)
-    const h = rf(24, 42), w = h * rf(0.85, 1.2), d = w * rf(0.7, 1.1) * (rn() < 0.5 ? -1 : 1)
+    const h = rf(38, 58), w = h * rf(0.75, 1), d = w * rf(0.5, 0.85) * (rn() < 0.5 ? -1 : 1)
     const ext = Math.max(w, Math.abs(d) + w * 0.7)
     if (!inside(px, py, 70)) continue
-    if (S.C.some(c => Math.hypot(c.x - px, c.y - py) < 54 + ext)) continue
-    if (S.E.some(([i, j]) => segDist({ x: px, y: py }, S.C[i], S.C[j]) < 24 + ext * 0.42)) continue
-    if (put.some(q => Math.hypot(q[0] - px, q[1] - py) < 78)) continue
+    if (!TR.some(t => Math.hypot(t[0] - px, t[1] - py) < 44)) continue   // stand it in a wood
+    if (S.C.some(c => Math.hypot(c.x - px, c.y - py) < 44 + ext)) continue
+    if (S.E.some(([i, j]) => segDist({ x: px, y: py }, S.C[i], S.C[j]) < 20 + ext * 0.35)) continue
+    if (put.some(q => Math.hypot(q[0] - px, q[1] - py) < 74)) continue
     put.push([px, py]); n++
     peak(g, px, py, h, w, d)
   }
+
+  CL = []                          // sunset cloud, drifting; drawn live, behind the land
+  for (let k = 0; k < 8; k++) {
+    const p = []
+    for (let q = 3 + (rn() * 3 | 0); q--;) p.push([rf(-95, 95), rf(-14, 14), rf(40, 82), rf(15, 27)])
+    CL.push([rf(0, 2100), rf(-140, 780), rf(3, 9), p])
+  }
+}
+
+// clouds ride in front of the sky and behind the island, so they slide out of
+// sight behind the land and back into the open on the far side
+export function clouds (x) {
+  for (const [ox, cy2, v, p] of CL) {
+    const px = (ox + S.elapsed * v) % 2100 - 550
+    for (const [dx, dy, rx, ry] of p) {
+      x.globalAlpha = 0.15; x.fillStyle = '#6b4a70'
+      x.beginPath(); x.ellipse(px + dx, cy2 + dy, rx, ry, 0, 0, 6.2832); x.fill()
+      x.globalAlpha = 0.12; x.fillStyle = '#ffc79a'
+      x.beginPath(); x.ellipse(px + dx, cy2 + dy - ry * 0.4, rx * 0.78, ry * 0.66, 0, 0, 6.2832); x.fill()
+    }
+  }
+  x.globalAlpha = 1
 }
 
 const tri = (g, px, py, w, h, c) => {
   g.fillStyle = c
   g.beginPath(); g.moveTo(px - w, py); g.lineTo(px, py - h); g.lineTo(px + w, py)
   g.closePath(); g.fill()
+}
+
+// canopy: every base laid down first, then every lit crown, so the stand reads
+// as one wood rather than a pile of separate discs
+function puff (g, b) {
+  g.fillStyle = '#1e3a20'
+  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax, ay, r, 0, 6.2832); g.fill() }
+  g.fillStyle = '#3a6330'
+  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax - r * 0.22, ay - r * 0.26, r * 0.7, 0, 6.2832); g.fill() }
 }
 
 function peak (g, px, py, h, w, d) {
@@ -173,14 +206,20 @@ function peak (g, px, py, h, w, d) {
   g.fillStyle = '#c39a71'          // lit cap, kept dim: a road has to stay legible over it
   g.beginPath(); g.moveTo(px - s * 0.6, py - h + s); g.lineTo(px, py - h); g.lineTo(px + s * 0.6, py - h + s)
   g.closePath(); g.fill()
+  const b = []                     // trees crowding the foot, so it rises out of the wood
+  for (let k = 12 + (rn() * 8 | 0); k--;) {
+    b.push([px + d * 0.4 + rf(-w * 1.4, w * 1.4), py + rf(1, 13), rf(8, 14)])
+  }
+  puff(g, b)
 }
 
-// a stand of trees: overlapping canopy blobs, each with its west side lit
+// a stand of trees: blobs are dropped, not clipped, so none is ever cut in half
 function wood (g, px, py, sp) {
   const b = []
-  for (let k = 10 + (rn() * 41 | 0); k--;) b.push([px + rf(-sp, sp), py + rf(-sp * 0.6, sp * 0.6), rf(15, 28)])
-  g.fillStyle = '#1e3a20'
-  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax, ay, r, 0, 6.2832); g.fill() }
-  g.fillStyle = '#3a6330'
-  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax - r * 0.22, ay - r * 0.26, r * 0.7, 0, 6.2832); g.fill() }
+  for (let k = 10 + (rn() * 41 | 0); k--;) {
+    const ax = px + rf(-sp, sp), ay = py + rf(-sp * 0.6, sp * 0.6), r = rf(15, 28)
+    if (inside(ax, ay, r + 8)) b.push([ax, ay, r])
+  }
+  TR.push(...b)
+  puff(g, b)
 }

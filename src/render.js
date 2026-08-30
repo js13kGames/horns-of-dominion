@@ -1,6 +1,6 @@
 import { S, W, H, T } from './state.js'
 import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged } from './sim.js'
-import { blit, stars } from './terrain.js'
+import { blit, clouds, stars } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -87,7 +87,7 @@ export function draw (dt) {
   }
   x.globalAlpha = 1; x.restore()
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
-  blit(x)
+  clouds(x); blit(x)          // cloud passes behind the island, so it goes down first
 
   // edges
   x.lineWidth = 2; x.strokeStyle = '#d3b083'

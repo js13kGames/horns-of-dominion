@@ -227,6 +227,26 @@ One thing I caught and fixed mid-way: the floored skirt. Without a minimum, the 
 Minor: 4 seeds in 200 place only one mountain, because at 70% forest there' that also keeps its distance from roads and cities.
 
 
+# Round 10
+1. Prevent individual forests blobs from touching the coastline
+2. Render mountains in the middle of forests, and have their bottom be shaped with semi-forests blobs so they emerge from the forests.
+3. Add floating drifitng clouds to the background.
+
+## Resolution
+
+All three are in. 12,700 B zipped of 13,312 (612 B headroom), sim-test still digit-identical (p50 4138 / p90 5950 / p99 9427 / max 16141, 0 stalemates), all four harnesses green, and 200 seeds all place a full feature set with every city on the island.
+
+1. Canopies clear the coast. The woods were previously drawn inside a clip path, which is what produced the sliced-flat edge along the cliff. The clip is gone (the shoreline highlight still uses it) and each blob is now individually tested with inside(ax, ay, r + 8) — blobs that would cross the coast are simply dropped, so a wood near the shore thins out and every canopy stays a whole circle. Coverage settled at 69% median, still in the range you asked for.
+
+2. Mountains emerge from the woods. Peaks now require a canopy blob within 44 units of their base, so they only stand in forest, and a scatter of 12–20 small blobs crowds their feet.
+
+The first attempt at this failed in a way worth mentioning: the peaks vanished entirely. Two causes — the foot trees were allowed above the base line with radii up to 18, and more fundamentally the mountains were never taller than the trees to begin with (a canopy blob rises up to 28 units off the ground; peaks were 24–42 tall). Peaks are now 38–58 tall with the foot trees strictly at and below the base at radius 8–14, so they clear the canopy by a decent margin. I loosened their city and road clearances to compensate for the larger footprint, and all 200 seeds still place five.
+
+3. Drifting cloud. Eight clusters of 3–5 ellipses in a dusky base with a warm lit crown, drifting west to east at 3–9 world units a second and wrapping over a 2100-unit period. They're drawn live in world space before the blit, so they slide out of sight behind the island and reappear on the far side. They ride on S.elapsed, which means they keep drifting while the game is paused but don't speed up at 8× — which felt right for weather.
+
+Headroom is down to 612 B, so it's worth knowing that's the tightest it's been.
+
+
 # Pending Topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)
