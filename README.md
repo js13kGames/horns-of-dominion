@@ -16,8 +16,8 @@ warband · ✖ Cancel (or `esc`) disarms targeting, so you can inspect cities fr
 
 **Fog of war.** You see a city only while you hold it, border it, or stand a warband on
 it; you see a road only while it touches your land or one of your hosts is on it. Roads
-and city positions are always drawn — they just go grey, along with the banner and every
-number behind them. The fog closes again the moment a host withdraws, and enemy warbands
+and city positions are always drawn — a fogged road goes dotted rather than solid, and a
+fogged city goes grey along with the banner and every number behind it. The fog closes again the moment a host withdraws, and enemy warbands
 in the dark are not drawn at all — and neither are battles fought there: no clash
 markers, no capture flashes, no log entries for events beyond your reach. The AI plays
 with full information.
@@ -32,11 +32,13 @@ A realm reduced to its last two cities starts to crumble — walls shed, hosts m
 and fortification upkeep decays as a war drags on, so no siege lasts forever.
 
 **The Rainbow Kingdom itself** is a floating island, drawn from the map it carries:
-the coastline is the convex spread of that seed's own 20 cities, jittered into a ragged
-edge, so every kingdom gets its own silhouette. The sun is setting behind it; grassland
-catches the light, mountains and woods fill whatever ground the roads and cities are not
-using, and bare brown rock hangs off the underside into the void. The whole backdrop
-bakes once per map into an offscreen canvas and costs one drawImage a frame.
+the coastline traces the convex hull of that seed's own 20 cities across 300 samples,
+leaning slightly outward and roughened at three scales, so every kingdom gets its own
+ragged silhouette and none of them waste a band of empty grass. The sun is setting
+behind it: grassland catches the light, woods cover about seventy percent of the ground
+and run on under the roads and cities, mountains keep their distance, and bare rock
+falls away underneath in a broad cone. The whole backdrop bakes once per map into an
+offscreen canvas and costs one drawImage a frame.
 
 The map is procedural and seeded — the seed lives in the URL hash, so `#12345`
 replays the exact same kingdom.

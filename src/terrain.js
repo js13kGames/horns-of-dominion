@@ -3,7 +3,7 @@ import { segDist } from './map.js'
 
 // The backdrop is baked once per map into an offscreen canvas, so detail here
 // costs nothing per frame — the live layer pays a single drawImage.
-const BX = -280, BY = -170, BW = 1560, BH = 1090, Q = 1.5
+const BX = -160, BY = -120, BW = 1320, BH = 1120, Q = 1.5
 const bg = document.createElement('canvas')
 export const blit = x => x.drawImage(bg, BX, BY, BW, BH)
 
@@ -13,7 +13,7 @@ let t0 = 1
 const rn = () => (t0 = (Math.imul(t0, 1103515245) + 12345) & 0x7fffffff) / 0x7fffffff
 const rf = (a, b) => a + rn() * (b - a)
 
-const N = 54                 // coastline samples — enough for a broken edge
+const N = 300                // coastline samples — a broken, rocky edge
 const R = []                 // radius per sample, around the city centroid
 let cx = 0, cy = 0
 export const stars = []      // drawn live in screen space, so no window is ever starless
@@ -35,27 +35,43 @@ function coast (g) {
   g.closePath()
 }
 
+// a ring of n random values, read back smoothly at any of the N samples —
+// three of these at different n give the coast headlands, coves and grit
+const ring = (n, lo, hi) => { const v = []; for (let k = 0; k < n; k++) v[k] = rf(lo, hi); return v }
+const at = (v, k) => {
+  const t = k / N * v.length, i = t | 0, u = (1 - Math.cos((t - i) * 3.1416)) / 2
+  return v[i % v.length] * (1 - u) + v[(i + 1) % v.length] * u
+}
+
 // the island is the map's own convex spread, pushed out by a wandering margin
 function shape () {
   cx = cy = 0
   for (const c of S.C) { cx += c.x; cy += c.y }
   cx /= S.C.length; cy /= S.C.length
-  const m = []
+  const o1 = ring(20, 26, 112), o2 = ring(70, -22, 22), o3 = ring(N, -5, 5)
+  const co = [], sup = []
   for (let k = 0; k < N; k++) {
-    const a = k / N * 6.2832, co = Math.cos(a), si = Math.sin(a)
+    const a = k / N * 6.2832
+    co[k] = Math.cos(a)
     let s = 0
-    for (const c of S.C) s = Math.max(s, (c.x - cx) * co + (c.y - cy) * si)
-    R[k] = s                       // convex support: contains every city by construction
-    m[k] = rf(44, 92)
+    for (const c of S.C) s = Math.max(s, (c.x - cx) * co[k] + (c.y - cy) * Math.sin(a))
+    sup[k] = s                     // convex support in this direction
   }
-  for (let p = 0; p < 3; p++)      // smooth the margin into headlands and bays
-    for (let k = 0; k < N; k++) m[k] = (m[(k + N - 1) % N] + 2 * m[k] + m[(k + 1) % N]) / 4
-  // the support of a rectangular city cloud dips on the axes, which would give
-  // every island the same rounded-square outline — pad the dips back out. The
-  // jitter goes on last and unsmoothed: that is what makes the edge ragged.
-  let mx = 0
-  for (let k = 0; k < N; k++) mx = Math.max(mx, R[k])
-  for (let k = 0; k < N; k++) R[k] += (mx - R[k]) * 0.3 + m[k] + rf(-16, 16)
+  // The polar support curve bulges far past the cities between the axes, which
+  // is where all the wasted space came from. The hull it envelopes does not:
+  // a ray hits the hull at min(support(f) / cos(t - f)) over every supporting
+  // line, so this hugs the cities on every side.
+  const M = 60, cs = []
+  for (let q = -M; q <= M; q++) cs[q + M] = Math.cos(q / N * 6.2832)
+  for (let k = 0; k < N; k++) {
+    let r = 1e9
+    for (let q = -M; q <= M; q++) r = Math.min(r, sup[(k + q + N) % N] / cs[q + M])
+    // all the way to the hull is a rectangle, since that is how the cities are
+    // sown — leaning partway back toward the support rounds the corners off
+    // without giving back the wasted band north and south
+    const skirt = at(o1, k) * (0.34 + 0.66 * Math.abs(co[k])) + at(o2, k) + o3[k]
+    R[k] = r + (sup[k] - r) * 0.45 + Math.max(38, skirt)
+  }
 }
 
 const grad = (g, y0, y1, c0, c1) => {
@@ -75,28 +91,30 @@ export function paint () {
   const g = bg.getContext('2d')
   g.setTransform(Q, 0, 0, Q, -BX * Q, -BY * Q)
 
-  // the underside: bare rock torn off the southern rim
-  const k0 = Math.round(0.55 / 6.2832 * N), k1 = Math.round(2.6 / 6.2832 * N)
-  const tx = cx + rf(-60, 60), ty = cy + radAt(1.5708) + 210
-  const [sx, sy] = pt(k0), [ex, ey] = pt(k1)
+  // the underside: bare rock under the whole lower rim, tapering to a cone.
+  // The flanks bow out (u squared) so the rock hugs the island's full width
+  // before it narrows.
+  const half = N / 2 | 0
+  const tx = cx + rf(-40, 40), ty = cy + radAt(1.5708) + 215
+  const [sx, sy] = pt(0), [ex, ey] = pt(half)
   g.beginPath(); g.moveTo(sx, sy)
-  for (let k = k0 + 1; k <= k1; k++) { const [px, py] = pt(k); g.lineTo(px, py) }
-  for (let j = 1; j < 4; j++) {            // down the far side in rough steps,
-    const u = j / 4                        // squared so the shoulder rolls off
-    g.lineTo(ex + (tx - ex) * u - (1 - u) * rf(12, 54), ey + (ty - ey) * u * u + rf(-13, 13))
+  for (let k = 1; k <= half; k++) { const [px, py] = pt(k); g.lineTo(px, py) }
+  for (let q = 1; q < 6; q++) {          // down the left flank in rough steps
+    const u = q / 6
+    g.lineTo(ex + (tx - ex) * u * u + rf(-16, 16), ey + (ty - ey) * u ** 0.6 + rf(-14, 14))
   }
   g.lineTo(tx, ty)
-  for (let j = 3; j > 0; j--) {            // and back up the near one
-    const u = j / 4
-    g.lineTo(sx + (tx - sx) * u + (1 - u) * rf(12, 54), sy + (ty - sy) * u * u + rf(-13, 13))
+  for (let q = 5; q > 0; q--) {          // and back up the right one
+    const u = q / 6
+    g.lineTo(sx + (tx - sx) * u * u + rf(-16, 16), sy + (ty - sy) * u ** 0.6 + rf(-14, 14))
   }
   g.closePath()
-  g.fillStyle = grad(g, cy + 240, ty, '#7d5133', '#2a170f00')
+  g.fillStyle = grad(g, cy + radAt(1.5708) - 30, ty + 150, '#4a2c1a', '#1c0e0800')
   g.fill()
 
   for (let k = 0; k < 3; k++) {    // rubble adrift below it
-    g.globalAlpha = rf(0.3, 0.6); g.fillStyle = '#6b4530'
-    g.beginPath(); g.ellipse(tx + rf(-160, 160), ty + rf(-40, 90), rf(6, 15), rf(4, 8), rf(-0.4, 0.4), 0, 6.2832)
+    g.globalAlpha = rf(0.35, 0.7); g.fillStyle = '#3b2318'
+    g.beginPath(); g.ellipse(tx + rf(-170, 170), ty + rf(-30, 90), rf(6, 15), rf(4, 8), rf(-0.4, 0.4), 0, 6.2832)
     g.fill()
   }
   g.globalAlpha = 1
@@ -109,35 +127,33 @@ export function paint () {
 
   g.save(); coast(g); g.clip()      // the low sun catching the clifftop
   coast(g); g.strokeStyle = '#c9975a'; g.lineWidth = 4; g.stroke()
+
+  // Woods go down first and freely — they run under the roads and cities, which
+  // are drawn over the backdrop anyway, and the coast clip lets them reach the
+  // cliff edge without spilling into the void.
+  for (let k = 0, f = 0; k < 500 && f < 64; k++) {
+    const px = rf(cx - 540, cx + 540), py = rf(cy - 420, cy + 420)
+    if (!inside(px, py, -14)) continue
+    f++
+    wood(g, px, py, rf(30, 80))
+  }
   g.restore()
 
-  // peaks and woods take the ground no road or city is using. Clearance is
-  // sized to the feature, or a wide mountain placed by its base point still
-  // spills its flank across a road.
+  // peaks are silhouettes, so they do keep their distance. Clearance is sized
+  // to the feature, or a wide mountain placed by its base point still spills
+  // its flank across a road.
   const put = []
-  const free = (px, py, ext) => {
-    if (!inside(px, py, 70)) return 0
-    for (const c of S.C) if (Math.hypot(c.x - px, c.y - py) < 54 + ext) return 0
-    for (const [i, j] of S.E) if (segDist({ x: px, y: py }, S.C[i], S.C[j]) < 24 + ext * 0.42) return 0
-    for (const q of put) if (Math.hypot(q[0] - px, q[1] - py) < 78) return 0
-    return 1
-  }
-  let n = 0, f = 0
-  // alternate the two kinds, so a cramped map still gets some of each rather
-  // than spending every attempt on mountains
-  for (let k = 0; k < 420 && (n < 5 || f < 4); k++) {
-    const px = rf(cx - 470, cx + 470), py = rf(cy - 340, cy + 340)
-    if (n < 5 && ((k & 1) || f > 3)) {
-      const h = rf(24, 42), w = h * rf(0.85, 1.2), d = w * rf(0.7, 1.1) * (rn() < 0.5 ? -1 : 1)
-      if (!free(px, py, Math.max(w, Math.abs(d) + w * 0.7))) continue
-      put.push([px, py]); n++
-      peak(g, px, py, h, w, d)
-    } else if (f < 4) {
-      const sp = rf(26, 44)
-      if (!free(px, py, sp + 16)) continue
-      put.push([px, py]); f++
-      wood(g, px, py, sp)
-    }
+  let n = 0
+  for (let k = 0; k < 300 && n < 5; k++) {
+    const px = rf(cx - 470, cx + 470), py = rf(cy - 320, cy + 320)
+    const h = rf(24, 42), w = h * rf(0.85, 1.2), d = w * rf(0.7, 1.1) * (rn() < 0.5 ? -1 : 1)
+    const ext = Math.max(w, Math.abs(d) + w * 0.7)
+    if (!inside(px, py, 70)) continue
+    if (S.C.some(c => Math.hypot(c.x - px, c.y - py) < 54 + ext)) continue
+    if (S.E.some(([i, j]) => segDist({ x: px, y: py }, S.C[i], S.C[j]) < 24 + ext * 0.42)) continue
+    if (put.some(q => Math.hypot(q[0] - px, q[1] - py) < 78)) continue
+    put.push([px, py]); n++
+    peak(g, px, py, h, w, d)
   }
 }
 
@@ -162,7 +178,7 @@ function peak (g, px, py, h, w, d) {
 // a stand of trees: overlapping canopy blobs, each with its west side lit
 function wood (g, px, py, sp) {
   const b = []
-  for (let k = 6 + (rn() * 4 | 0); k--;) b.push([px + rf(-sp, sp), py + rf(-sp * 0.5, sp * 0.5), rf(11, 19)])
+  for (let k = 10 + (rn() * 41 | 0); k--;) b.push([px + rf(-sp, sp), py + rf(-sp * 0.6, sp * 0.6), rf(15, 28)])
   g.fillStyle = '#1e3a20'
   for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax, ay, r, 0, 6.2832); g.fill() }
   g.fillStyle = '#3a6330'

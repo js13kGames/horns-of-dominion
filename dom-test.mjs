@@ -48,7 +48,8 @@ const click = (a, i) => {
 }
 const tap = (wx, wy) => {  // world coords -> screen
   const s = Math.min(1280 / 1000, 800 / 700) * 0.72
-  els.cv.h.pointerdown({ clientX: wx * s + (1280 - 1000 * s) / 2, clientY: wy * s + (800 - 700 * s) / 2 })
+  const oy = -70 * s
+  els.cv.h.pointerdown({ clientX: wx * s + (1280 - 1000 * s) / 2, clientY: wy * s + (800 - 700 * s) / 2 + oy })
 }
 
 let fail = 0

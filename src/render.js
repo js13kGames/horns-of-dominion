@@ -14,7 +14,7 @@ export function resize () {
   x.setTransform(dpr, 0, 0, dpr, 0, 0)
   V.s = Math.min(w / W, h / H) * 0.72   // leave sky around the island
   V.ox = (w - W * V.s) / 2
-  V.oy = (h - H * V.s) / 2
+  V.oy = (h - H * V.s) / 2 - 70 * V.s   // ride high: the rock below needs the room
   sky = x.createLinearGradient(0, 0, 0, cv.height)   // low sun: the glow band sits
   for (const [o, c] of [[0, '#191038'], [0.42, '#5d2b4e'],   // behind the island's flanks
     [0.66, '#c96a40'], [0.84, '#5a2733'], [1, '#22111f']]) sky.addColorStop(o, c)
@@ -90,12 +90,13 @@ export function draw (dt) {
   blit(x)
 
   // edges
-  x.lineWidth = 2
+  x.lineWidth = 2; x.strokeStyle = '#d3b083'
   for (const [i, j] of S.E) {
     const a = S.C[i], b = S.C[j]
-    x.strokeStyle = seeRoad(i, j) ? '#2b2547' : '#5d6b55'   // fogged roads grey, never gone
+    x.setLineDash(seeRoad(i, j) ? [] : [3, 5])   // fogged roads go dotted, never dim
     x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke()
   }
+  x.setLineDash([])
 
   // march highlight: neighbours of a selected army's node
   const sel = S.sel

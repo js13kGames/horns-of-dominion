@@ -195,3 +195,39 @@ Two things the brightening broke, which I caught in the render and fixed:
 - Fog inverted. On a dark board, fogged roads were darker than lit ones. On bright grass that reads backwards, so fogged roads are now a washed-out green-grey (#5d6b55) and lit roads a strong dark navy — the fogged one recedes into the ground the way it should.
 
 One thing to check by eye when you look: 10 of 200 seeds place 3 mountains instead of 5 on cramped maps. Woods always get their full 4.
+
+
+# Round 9
+1. Tighten vertically: There is a lot of wasted space top and bottom of the island, let's place the cities much closer to them, and move the map upward so that more of the floating rock in the bottom can be seen
+2. The rock at the bottom should "hug" the island better, it should be wider so that the terrain shape looks like a cone (rock should be visible on vertices that can trace a line to the bottom of screen)
+3. Increase the coast jagged to 300 samples
+4. Increase the blobs in forests to 10 to 50 range
+5. Draw forests blob under cities and roads, don't check for collisions with them
+6. Add many more forests to fill the island to 70% with forest
+7. Replace the out of fog of war roads with dotted lines the same color as the visible roads
+
+All seven items are in. 12,448 B zipped of 13,312 (864 B headroom), sim-test still digit-identical to baseline (p50 4138 / p90 5950 / p99 9427 / max 16141, 0 stalemates), all four DOM/command harnesses green.
+
+1. Tightened vertically. The real cause of the empty band turned out to be the coastline construction: the polar support curve bulges ~120 units past the cities between the axes. It now traces the actual convex hull — a ray hits the hull at min(support(φ) / cos(θ−φ)) over every supporting line, which reuses the support values I already had for about six lines. Straight hull was too literal (the island came out a rectangle, since that's how cities are sown), so it leans 45% back toward the support to round the corners. Measured on a 1080p window: island height went 783 → 701, sky above the island 40 → 80, room for rock below 149 → 191. The map also rides 70 units higher.
+
+2. The keel hugs and cones. It now springs from the entire lower rim (angle 0 to π) rather than a 118° arc, and the flanks were tapering the wrong way — width advanced linearly while the descent lagged, so it pinched the instant it left the rim. Width now lags (u²) and descent leads (u^0.6), so the rock stays full-breadth under the island before narrowing. It's also much darker: warm brown was invisible against the sunset glow band it sits in front of, so it reads as a backlit silhouette now.
+
+3. 300 coast samples, roughened at three scales — a 20-point ring for headlands and bays, a 70-point ring for coves, and per-sample grit. A single-octave jitter at 300 samples just looked like fur.
+
+4. Canopy blobs are 10–50 per wood.
+
+5. Woods ignore cities and roads and are clipped to the coastline instead, so they run right to the cliff edge. They're baked under everything anyway. Mountains still keep clear — they're silhouettes.
+
+6. Forest coverage: median 71% across 200 seeds (p10 67%, p90 76%), from 64 stands.
+
+7. Fogged roads are dotted, same colour as visible ones. That forced one more change: with a single road colour crossing both bright grass and dark canopy, I moved roads to a dirt-track tone (#d3b083) that reads on both.
+
+One thing I caught and fixed mid-way: the floored skirt. Without a minimum, the random margin could dip inside the hull — and since cities sit exactly on the hull, two seeds in 200 left a city standing in the sea. There's now a 38-unit floor, and the 2
+
+Minor: 4 seeds in 200 place only one mountain, because at 70% forest there' that also keeps its distance from roads and cities.
+
+
+# Pending Topics
+1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
+2. Add harmony score (warring too much tires your population)
+3. Add loyalty, conquered cities have low loyalty. Low loyalty cities can rebel. Loyalty builds as you invest resources or keep troops.
