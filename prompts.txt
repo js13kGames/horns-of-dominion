@@ -1,3 +1,44 @@
+# Foundations
+let's plan for the creation of a javascript game. It's a strategy game where you have to conquer the rainbow kingdom as an unicorn overlord. Its design is inspired by Crusader Kings by Paradox. Start Game lets you select what Unicorn realm you are the overlord of, each realm has different cities with each city having stats such as population, defensive value, economic value, standing defenses. In the cities you control you can raise armies by converting part of their population into unicorn warriors using the in game currency, which increases based on the economic value of the cities under your control. The Rainbow Kingdom has 20 cities represented as a map of interconnected nodes. In the world there are also armies posiioned in the nodes, you can move your armies to neighborging nodes. If the node is not under your control, the unit will constantly attack the node, losing warriors based on the defensive value of the node, and diminishing the standing defenses until they hit 0 and you assume control of the city. Also if there are units from the enemy you'll engage with them first, chipping away at their units until they either retreat or are defeated completely. All the factions are in place and controlled by a simple AI which will try to dominate the map (the goal of the game is to own 70% of the cities) by creating enemies and moving them into narby cities. You can also spend your currency to rebuild the defenses of a city. Big constraint for the game is, it should fit 13KB when zipped. We won't have any assets, everything should be generated and we should use a super minimalistic visual style using only emojis and flat geometry.
+
+## Resolution
+Built and verified. The game is running at http://localhost:8080 (just opened it) — pick a realm and play.
+Where it landed on the constraint: 7,255 B zipped of 13,312 — 45% headroom, so there's room for polish without golfing anything.
+src/state.js state + T table holding every balance constant
+src/map.js seeded 20-node planar graph, city stats, realm draft
+src/sim.js tick: income, movement, field battle, siege, capture, victory
+src/ai.js rule-based faction controller, one faction per tick
+src/render.js canvas: edges, cities, warbands, effects
+src/ui.js HUD, panels, log, title and end screens
+build.mjs esbuild → inline → minify → zip → hard gate at 13312
+Three bugs the harnesses caught, all real:
+The AI returned after mustering, so any faction with surplus gold raised troops forever and never marched. Games froze with 13,000-warrior stacks staring at each other across a two-city border. Mustering no longer blocks a march order, and AI hosts are capped per city held.
+The realm draft always let faction 0 pick first each pass. Over 400 games that showed up as a measurable win-rate skew; the draft order is now reshuffled per pass, and the distribution is 92/84/73/77/74 — noise.
+Seed-in-hash meant "New kingdom" reloaded the same map forever. The hash is honoured on first boot only, then rerolled.
+Verification (node sim-test.mjs, dom-test.mjs, dist-test.mjs):
+400 headless all-AI games: 0 stalemates, median 714 ticks ≈ 6 min at 1×, worst case 27 min at 1× (7 min at 4×).
+23 DOM checks drive the real modules against a stub browser — raise, march, siege, repair, pause, speed keys, win/lose, restart.
+The shipped minified dist/index.html is booted and clicked through separately, so the build pipeline itself is covered.
+What I could not check: how it actually looks. There's no headless browser here, so the canvas layout — emoji sizing, whether city name and stat labels collide on dense parts of the map, ring legibility — is unverified. That's the one thing worth your eyes right now.
+Two things I deliberately left out, per the plan: per-realm traits and sound. Say the word and either goes in — the byte budget can afford both.
+
+
+# Round 1 
+## Topics
+1. Speed is too quick, should be 10%.
+2. Movements of the units should be smoother instead of jumps. Not sure if that means a separate update loop running every frame vs a gameplay/physics/ai update at the scheduled intervals?
+3. Armies should attack each other if they find themselves while running between two nodes; if another army from the same color reaches the combat site, it should join the fight, attacking armies from other colors (pick randomly if there's more than 1) 
+4. It needs an onboarding scenario in a simplified map with a single enemy coming from a far away node, it should be super controlled and explain recruiting, movement, attacking and winning cities, however, let's hold from implementing it until we have more of the game fixed. Create a plan to address this feedback.
+
+# Round 2
+## Topics
+1. fleeing a battle should have a cost in units dead (AI should consider this when deciding to fleeing).
+2. Allow traveling to a non-immediate node, keep the destination node for the unit and calculate the path to it.
+3. Allow splitting a warband when clicking on it into two, slider to decide quantities.
+4. Clicking a warband that is on a battle should display a small battle summary panel under the warband panel, including all the armies that are involved in the battle and their numbers OR if the warband is attacking a city, show the city as defenders. it should also add a red dotted circle around all the warbands in confict in the map.
+5. Raising an army should take some time, not happen
+immediately, same for rebuilding defenses.
+
 # Round 3
 
 ## Topics
