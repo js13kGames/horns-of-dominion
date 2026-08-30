@@ -11,13 +11,13 @@ const mk = id => {
   return (els[id] = e)
 }
 const ctx = new Proxy({}, {
-  get: (t, k) => (k in t ? t[k] : (t[k] = () => {})),
+  get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)),   // gradients chain
   set: (t, k, v) => (t[k] = v, true)
 })
 ;['cv', 'hud', 'pan', 'log', 'ov'].forEach(mk)
 
 const win = { h: {} }
-globalThis.document = { getElementById: id => els[id] || mk(id), activeElement: null }
+globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 2
 globalThis.innerWidth = 1280
@@ -47,7 +47,7 @@ const click = (a, i) => {
   win.h.click({ target: el })
 }
 const tap = (wx, wy) => {  // world coords -> screen
-  const s = Math.min(1280 / 1000, 800 / 700)
+  const s = Math.min(1280 / 1000, 800 / 700) * 0.72
   els.cv.h.pointerdown({ clientX: wx * s + (1280 - 1000 * s) / 2, clientY: wy * s + (800 - 700 * s) / 2 })
 }
 

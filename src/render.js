@@ -1,5 +1,6 @@
 import { S, W, H, T } from './state.js'
 import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged } from './sim.js'
+import { blit, shimmer, stars } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -10,7 +11,7 @@ export function resize () {
   const w = innerWidth, h = innerHeight
   cv.width = w * dpr; cv.height = h * dpr
   x.setTransform(dpr, 0, 0, dpr, 0, 0)
-  V.s = Math.min(w / W, h / H)
+  V.s = Math.min(w / W, h / H) * 0.72   // leave sky around the island
   V.ox = (w - W * V.s) / 2
   V.oy = (h - H * V.s) / 2
 }
@@ -72,14 +73,21 @@ export function draw (dt) {
   place(dt)
   const w = cv.width, h = cv.height
   x.save(); x.setTransform(1, 0, 0, 1, 0, 0)
-  x.fillStyle = '#0b0a12'; x.fillRect(0, 0, w, h); x.restore()
+  x.fillStyle = '#0b0a12'; x.fillRect(0, 0, w, h)
+  x.fillStyle = '#cfd3e8'                       // starfield lives in screen space,
+  for (let k = 0; k < stars.length; k += 3) {   // so no window edge is ever bare
+    x.globalAlpha = stars[k + 2]
+    x.fillRect(stars[k] * w, stars[k + 1] * h, 2, 2)
+  }
+  x.globalAlpha = 1; x.restore()
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
+  blit(x); shimmer(x)
 
   // edges
   x.lineWidth = 2
   for (const [i, j] of S.E) {
     const a = S.C[i], b = S.C[j]
-    x.strokeStyle = seeRoad(i, j) ? '#342d55' : '#191628'   // fogged roads grey, never gone
+    x.strokeStyle = seeRoad(i, j) ? '#4a4270' : '#2b2740'   // fogged roads grey, never gone
     x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke()
   }
 

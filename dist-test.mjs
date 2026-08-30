@@ -2,7 +2,7 @@
 import { readFileSync } from 'fs'
 const html = readFileSync('dist/index.html', 'utf8')
 const els = {}
-const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (t[k] = () => {})), set: (t, k, v) => (t[k] = v, true) })
+const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)), set: (t, k, v) => (t[k] = v, true) })
 // created on demand, so adding an element to index.html cannot silently break this
 const mk = id => (els[id] = {
   id, dataset: {}, style: {}, innerHTML: '',
@@ -10,7 +10,7 @@ const mk = id => (els[id] = {
   getContext: () => ctx
 })
 const win = { h: {} }
-globalThis.document = { getElementById: id => els[id] || mk(id), activeElement: null }
+globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 1
 globalThis.innerWidth = 1200; globalThis.innerHeight = 800

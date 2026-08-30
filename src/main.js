@@ -3,6 +3,7 @@ import { genMap } from './map.js'
 import { tick, getArmy, order, seeArmy } from './sim.js'
 import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
+import { paint } from './terrain.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
 
 const TICK = 0.5          // seconds of real time per tick at 1×
@@ -13,6 +14,7 @@ function fresh () {
   const h = boot ? parseInt(location.hash.slice(1)) : 0   // honour a shared seed once, then reroll
   boot = 0
   genMap(h > 0 ? h : (Math.random() * 1e9) | 0)
+  paint()
   location.hash = S.seed
 }
 hooks.start = f => {

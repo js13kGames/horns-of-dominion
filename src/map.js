@@ -15,7 +15,7 @@ const ccw = (a, b, c) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
 const crosses = (a, b, c, d) => ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d)
 
 // distance from point p to segment ab
-function segDist (p, a, b) {
+export function segDist (p, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y
   const l = dx * dx + dy * dy || 1
   let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l

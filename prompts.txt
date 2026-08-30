@@ -107,3 +107,25 @@ Two silent failures worth naming, both in my own tooling:
 - dist-test.mjs crashed on the new #toast element because its stub only knew the five original element ids. That was a stub gap, not a product bug — the real page has the div — but it meant the shipped-artifact gate was failing while &&-chaining hid the exit code from me. The stub now creates elements on demand so it can't drift from index.html again.
 
 All six harnesses pass. 10,730 B zipped of 13,312, 2,582 B headroom.
+
+
+# Day 2
+# Round 7
+Instead of an empty background, let's render the Rainbow Kingdom using vector shapes. It's a mostly flat floating island with a rainbow. with some mountains and lakes in the terrain. How can we do this effectively?
+
+## Resolution
+The Rainbow Kingdom now has ground under it. 12,439 B zipped of 13,312 (873 B headroom).
+
+How it's done — src/terrain.js bakes the whole backdrop once per map into an offscreen canvas, so the live frame pays a single drawImage and detail costs nothing:
+
+- The coastline is the map's own convex spread. For 30 angles it takes the support function of that seed's 20 city positions, pads the axis dips, adds a smoothed random margin, and draws it as one quadratic curve. Every city is inside by construction, and every seed gets a different silhouette.
+- The rainbow uses the five realm colours — already ROYGB-ish, so no new palette — arcing at radius 760 through the sky above the island, each band stroked with a colour→transparent gradient so its legs fade out instead of ending hard.
+- Mountains and lakes are rejection-sampled into ground no road or city is using, with clearance scaled to each feature's own size.
+- Lakes shimmer on the live layer, capped at 0.15 alpha so water can never compete with a red siege pulse.
+- The board zooms out to 0.72 so there's sky on every side and room for the underside to taper into the void.
+
+Verification. With no browser available, I recorded the real canvas call stream into SVG and rasterised it, which caught four things I'd otherwise have shipped: the rainbow was completely hidden behind the island; a fade veil left a visible rectangle edge; mountain flanks crossed roads and reached inside city discs (measured across 200 seeds, now worst-case 54 units from a city, −2 from a road); and every island came out the same rounded square with a notch at top centre.
+
+sim-test is digit-identical to the pre-round baseline — p50 4138 / p90 5950 / p99 9427 / max 16141, winners 90/80/70/68/92 — which is the proof the backdrop stayed out of the simulation. Ladder 0 / 20.0 / 42.5 / 61.0. All six harnesses green.
+
+Plan written to plan-phase7.md, with the five execution deltas recorded at the end. Dev server is still down — say the word and I'll start it so you can look at it moving.
