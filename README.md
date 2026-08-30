@@ -32,11 +32,11 @@ A realm reduced to its last two cities starts to crumble — walls shed, hosts m
 and fortification upkeep decays as a war drags on, so no siege lasts forever.
 
 **The Rainbow Kingdom itself** is a floating island, drawn from the map it carries:
-the coastline is the convex spread of that seed's own 20 cities, so every kingdom gets
-its own silhouette. A rainbow arcs behind it in the five realm colours, mountains and
-lakes fill whatever ground the roads and cities are not using, and the underside tapers
-off into the void. The whole backdrop bakes once per map into an offscreen canvas — only
-the lakes move, and only just.
+the coastline is the convex spread of that seed's own 20 cities, jittered into a ragged
+edge, so every kingdom gets its own silhouette. The sun is setting behind it; grassland
+catches the light, mountains and woods fill whatever ground the roads and cities are not
+using, and bare brown rock hangs off the underside into the void. The whole backdrop
+bakes once per map into an offscreen canvas and costs one drawImage a frame.
 
 The map is procedural and seeded — the seed lives in the URL hash, so `#12345`
 replays the exact same kingdom.
@@ -49,7 +49,7 @@ replays the exact same kingdom.
 | `src/map.js` | seeded 20-node planar graph, city stats, realm draft |
 | `src/sim.js` | one tick: income, movement, field battle, siege, capture, victory |
 | `src/ai.js` | rule-based faction controller, one faction per tick |
-| `src/terrain.js` | the floating island: coastline, rainbow, peaks, lakes — baked once |
+| `src/terrain.js` | the floating island: coastline, peaks, woods, keel — baked once |
 | `src/render.js` | canvas: backdrop, edges, cities, warbands, effects |
 | `src/ui.js` | HUD, panels, log, title and end screens |
 | `build.mjs` | esbuild → inline → minify → zip → size gate |

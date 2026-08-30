@@ -170,3 +170,28 @@ Verification. With no browser available, I recorded the real canvas call stream 
 sim-test is digit-identical to the pre-round baseline — p50 4138 / p90 5950 / p99 9427 / max 16141, winners 90/80/70/68/92 — which is the proof the backdrop stayed out of the simulation. Ladder 0 / 20.0 / 42.5 / 61.0. All six harnesses green.
 
 Plan written to plan-phase7.md, with the five execution deltas recorded at the end. Dev server is still down — say the word and I'll start it so you can look at it moving.
+
+# Round 8
+1. Remove the background rainbow and the lakes.
+2. Make the the scene have a sunset illumination, this includes having the background represent sunset instead of night, the grassland terrain more bright, and the jagged rock at the bottom will look more brown like rocks.
+3. Make the border of the island more jagged
+4. Add some forest blobs.
+
+## Resolution
+
+All four changes are in. 12,329 B zipped of 13,312 (983 B headroom), and sim-test is still digit-identical to baseline — p50 4138 / p90 5950 / p99 9427 / max 16141, winners 90/80/70/68/92. All six harnesses green.
+
+1. Rainbow and lakes are gone, along with the live shimmer layer they existed for — the backdrop is now fully static.
+
+2. Sunset. The sky is a five-stop gradient painted in screen space (rebuilt on resize, not per frame): deep indigo at the top, magenta through the middle, a warm glow band at 66% height that sits behind the island's flanks, going dark again at the bottom so the log stays readable. Grass went from #1d2c26 to #5b7a3c, the cliff rim and the underside are brown rock, and mountains are warm brown with a lit west face.
+
+3. The coast is jagged — 54 samples instead of 30, drawn as straight segments rather than quadratics, with an unsmoothed ±16 unit jitter applied last. Verified over 200 seeds that the jitter never pushes a city off the island.
+
+4. Forests are clusters of 6–9 overlapping canopy blobs, each with a lighter circle offset up-left so the low sun catches one side. They use the same size-aware placement filter as the mountains.
+
+Two things the brightening broke, which I caught in the render and fixed:
+
+- Labels stopped reading on pale grass. I tried a stroke halo first — at 3px it ate the 11px glyphs from both sides and made them worse. It's now a shadowBlur halo, which doesn't touch the glyph. Fogged city names also went from 40% to 67% white.
+- Fog inverted. On a dark board, fogged roads were darker than lit ones. On bright grass that reads backwards, so fogged roads are now a washed-out green-grey (#5d6b55) and lit roads a strong dark navy — the fogged one recedes into the ground the way it should.
+
+One thing to check by eye when you look: 10 of 200 seeds place 3 mountains instead of 5 on cramped maps. Woods always get their full 4.

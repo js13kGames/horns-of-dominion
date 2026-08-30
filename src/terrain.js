@@ -1,5 +1,5 @@
 import { S } from './state.js'
-import { REALMS, segDist } from './map.js'
+import { segDist } from './map.js'
 
 // The backdrop is baked once per map into an offscreen canvas, so detail here
 // costs nothing per frame — the live layer pays a single drawImage.
@@ -13,9 +13,9 @@ let t0 = 1
 const rn = () => (t0 = (Math.imul(t0, 1103515245) + 12345) & 0x7fffffff) / 0x7fffffff
 const rf = (a, b) => a + rn() * (b - a)
 
-const N = 30                 // coastline samples
+const N = 54                 // coastline samples — enough for a broken edge
 const R = []                 // radius per sample, around the city centroid
-let cx = 0, cy = 0, lakes = []
+let cx = 0, cy = 0
 export const stars = []      // drawn live in screen space, so no window is ever starless
 
 const radAt = a => R[((((a / 6.2832 * N) | 0) % N) + N) % N]
@@ -26,15 +26,12 @@ const pt = k => {
   return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]
 }
 
-// closed curve through the ring, quadratics hinged on the midpoints
+// straight segments, not curves — the coast is meant to look broken off
 function coast (g) {
   g.beginPath()
-  const [ax, ay] = pt(-1), [bx, by] = pt(0)
-  g.moveTo((ax + bx) / 2, (ay + by) / 2)
-  for (let k = 0; k < N; k++) {
-    const [px, py] = pt(k), [qx, qy] = pt(k + 1)
-    g.quadraticCurveTo(px, py, (px + qx) / 2, (py + qy) / 2)
-  }
+  const [ax, ay] = pt(0)
+  g.moveTo(ax, ay)
+  for (let k = 1; k < N; k++) { const [px, py] = pt(k); g.lineTo(px, py) }
   g.closePath()
 }
 
@@ -49,15 +46,16 @@ function shape () {
     let s = 0
     for (const c of S.C) s = Math.max(s, (c.x - cx) * co + (c.y - cy) * si)
     R[k] = s                       // convex support: contains every city by construction
-    m[k] = rf(24, 70)
+    m[k] = rf(44, 92)
   }
-  for (let p = 0; p < 3; p++)      // smooth it, so the coast undulates instead of jitters
+  for (let p = 0; p < 3; p++)      // smooth the margin into headlands and bays
     for (let k = 0; k < N; k++) m[k] = (m[(k + N - 1) % N] + 2 * m[k] + m[(k + 1) % N]) / 4
   // the support of a rectangular city cloud dips on the axes, which would give
-  // every island the same rounded-square outline — pad the dips back out
+  // every island the same rounded-square outline — pad the dips back out. The
+  // jitter goes on last and unsmoothed: that is what makes the edge ragged.
   let mx = 0
   for (let k = 0; k < N; k++) mx = Math.max(mx, R[k])
-  for (let k = 0; k < N; k++) R[k] += (mx - R[k]) * 0.3 + m[k]
+  for (let k = 0; k < N; k++) R[k] += (mx - R[k]) * 0.3 + m[k] + rf(-16, 16)
 }
 
 const grad = (g, y0, y1, c0, c1) => {
@@ -70,56 +68,52 @@ export function paint () {
   t0 = ((S.seed | 0) ^ 0x5f3759df) & 0x7fffffff || 1
   shape()
 
-  stars.length = 0
-  for (let k = 0; k < 46; k++) stars.push(rn(), rn(), rf(0.12, 0.46))
+  stars.length = 0               // only high up, where the sunset has not reached
+  for (let k = 0; k < 40; k++) stars.push(rn(), rn() * 0.38, rf(0.08, 0.3))
 
   bg.width = BW * Q; bg.height = BH * Q
   const g = bg.getContext('2d')
   g.setTransform(Q, 0, 0, Q, -BX * Q, -BY * Q)
 
-  // rainbow first, arcing through the sky above the island — the realm palette
-  // is already ROYGB-ish, so the sky is coloured by the factions themselves
-  g.globalAlpha = 0.28; g.lineWidth = 16
-  REALMS.forEach(([, c], i) => {
-    g.strokeStyle = grad(g, cy - 200, cy + 160, c, c + '00')   // legs fade, no hard ends
-    g.beginPath(); g.arc(cx, cy + 300, 760 - i * 18, 3.1416, 6.2832); g.stroke()
-  })
-  g.globalAlpha = 1
-
-  // the underside: a jagged keel hanging off the southern rim
+  // the underside: bare rock torn off the southern rim
   const k0 = Math.round(0.55 / 6.2832 * N), k1 = Math.round(2.6 / 6.2832 * N)
   const tx = cx + rf(-60, 60), ty = cy + radAt(1.5708) + 210
   const [sx, sy] = pt(k0), [ex, ey] = pt(k1)
   g.beginPath(); g.moveTo(sx, sy)
   for (let k = k0 + 1; k <= k1; k++) { const [px, py] = pt(k); g.lineTo(px, py) }
-  g.lineTo(ex + (tx - ex) * 0.45 - 30, ey + (ty - ey) * 0.5)
+  for (let j = 1; j < 4; j++) {            // down the far side in rough steps,
+    const u = j / 4                        // squared so the shoulder rolls off
+    g.lineTo(ex + (tx - ex) * u - (1 - u) * rf(12, 54), ey + (ty - ey) * u * u + rf(-13, 13))
+  }
   g.lineTo(tx, ty)
-  g.lineTo(sx + (tx - sx) * 0.5 + 34, sy + (ty - sy) * 0.46)
+  for (let j = 3; j > 0; j--) {            // and back up the near one
+    const u = j / 4
+    g.lineTo(sx + (tx - sx) * u + (1 - u) * rf(12, 54), sy + (ty - sy) * u * u + rf(-13, 13))
+  }
   g.closePath()
-  g.fillStyle = grad(g, cy + 150, ty, '#332b4e', '#0b0a1200')
+  g.fillStyle = grad(g, cy + 240, ty, '#7d5133', '#2a170f00')
   g.fill()
 
   for (let k = 0; k < 3; k++) {    // rubble adrift below it
-    g.globalAlpha = rf(0.25, 0.55); g.fillStyle = '#2a2440'
+    g.globalAlpha = rf(0.3, 0.6); g.fillStyle = '#6b4530'
     g.beginPath(); g.ellipse(tx + rf(-160, 160), ty + rf(-40, 90), rf(6, 15), rf(4, 8), rf(-0.4, 0.4), 0, 6.2832)
     g.fill()
   }
   g.globalAlpha = 1
 
-  // cliff band: stroke the coast wide, then fill over it — the half of the
-  // stroke left outside the fill is the rock face
-  coast(g); g.strokeStyle = '#2a2438'; g.lineWidth = 14; g.stroke()
-  g.fillStyle = grad(g, cy - 320, cy + 340, '#1d2c26', '#151f2b')
+  // cliff band: stroke the coast wide in rock, then fill the grass over it —
+  // the half of the stroke left outside the fill is the rock face
+  coast(g); g.strokeStyle = '#6d4830'; g.lineWidth = 16; g.stroke()
+  g.fillStyle = grad(g, cy - 340, cy + 340, '#5b7a3c', '#31473a')
   g.fill()
 
-  g.save(); coast(g); g.clip()      // a thin shoreline just inside the rim
-  coast(g); g.strokeStyle = '#3c5a48'; g.lineWidth = 3; g.stroke()
+  g.save(); coast(g); g.clip()      // the low sun catching the clifftop
+  coast(g); g.strokeStyle = '#c9975a'; g.lineWidth = 4; g.stroke()
   g.restore()
 
-  // peaks and lakes take the ground no road or city is using. Clearance is
+  // peaks and woods take the ground no road or city is using. Clearance is
   // sized to the feature, or a wide mountain placed by its base point still
   // spills its flank across a road.
-  lakes = []
   const put = []
   const free = (px, py, ext) => {
     if (!inside(px, py, 70)) return 0
@@ -128,30 +122,22 @@ export function paint () {
     for (const q of put) if (Math.hypot(q[0] - px, q[1] - py) < 78) return 0
     return 1
   }
-  let n = 0
+  let n = 0, f = 0
   // alternate the two kinds, so a cramped map still gets some of each rather
   // than spending every attempt on mountains
-  for (let k = 0; k < 420 && (n < 5 || lakes.length < 4); k++) {
+  for (let k = 0; k < 420 && (n < 5 || f < 4); k++) {
     const px = rf(cx - 470, cx + 470), py = rf(cy - 340, cy + 340)
-    if (n < 5 && ((k & 1) || lakes.length > 3)) {
+    if (n < 5 && ((k & 1) || f > 3)) {
       const h = rf(24, 42), w = h * rf(0.85, 1.2), d = w * rf(0.7, 1.1) * (rn() < 0.5 ? -1 : 1)
       if (!free(px, py, Math.max(w, Math.abs(d) + w * 0.7))) continue
       put.push([px, py]); n++
       peak(g, px, py, h, w, d)
-    } else if (lakes.length < 4) {
-      const rx = rf(26, 46), ry = rf(13, 22)
-      if (!free(px, py, rx)) continue
-      put.push([px, py])
-      lakes.push({ x: px, y: py, rx, ry, ph: rf(0, 6.3) })
+    } else if (f < 4) {
+      const sp = rf(26, 44)
+      if (!free(px, py, sp + 16)) continue
+      put.push([px, py]); f++
+      wood(g, px, py, sp)
     }
-  }
-  for (const L of lakes) {
-    g.beginPath(); g.ellipse(L.x, L.y, L.rx, L.ry, 0, 0, 6.2832)
-    g.fillStyle = '#1b3350'; g.fill()
-    g.strokeStyle = '#2a4d72'; g.lineWidth = 2; g.stroke()
-    g.globalAlpha = 0.35; g.fillStyle = '#3c6d9c'
-    g.beginPath(); g.ellipse(L.x - L.rx * 0.15, L.y - L.ry * 0.3, L.rx * 0.6, L.ry * 0.4, 0, 0, 6.2832)
-    g.fill(); g.globalAlpha = 1
   }
 }
 
@@ -162,30 +148,23 @@ const tri = (g, px, py, w, h, c) => {
 }
 
 function peak (g, px, py, h, w, d) {
-  tri(g, px + d, py, w * 0.7, h * rf(0.5, 0.72), '#262238')   // shoulder, behind
-  tri(g, px, py, w, h, '#2b2740')
-  g.fillStyle = '#3a3556'                                     // the lit face
+  tri(g, px + d, py, w * 0.7, h * rf(0.5, 0.72), '#3d3038')   // shoulder, behind
+  tri(g, px, py, w, h, '#4c3c3c')
+  g.fillStyle = '#8a6446'                                     // the face the sun still finds
   g.beginPath(); g.moveTo(px - w, py); g.lineTo(px, py - h); g.lineTo(px - w * 0.12, py)
   g.closePath(); g.fill()
   const s = h * 0.26
-  g.fillStyle = '#7d84a8'          // snow, kept dim: a road has to stay legible over it
+  g.fillStyle = '#c39a71'          // lit cap, kept dim: a road has to stay legible over it
   g.beginPath(); g.moveTo(px - s * 0.6, py - h + s); g.lineTo(px, py - h); g.lineTo(px + s * 0.6, py - h + s)
   g.closePath(); g.fill()
 }
 
-// the one live part of the backdrop: slow highlight bands drifting on the water.
-// Capped at 0.15 alpha so it can never compete with a red siege pulse.
-export function shimmer (x) {
-  for (const L of lakes) {
-    const t = S.elapsed * 0.35 + L.ph
-    x.globalAlpha = 0.1 + 0.05 * Math.sin(t * 1.7)
-    x.strokeStyle = '#9fd8ff'; x.lineWidth = 2
-    for (let k = 0; k < 2; k++) {
-      const o = (k - 0.5) * L.ry * 0.9
-      const w = L.rx * 0.62 * Math.sqrt(1 - (o / L.ry) ** 2)
-      const d = Math.sin(t + k * 2.2) * L.rx * 0.14
-      x.beginPath(); x.moveTo(L.x + d - w, L.y + o); x.lineTo(L.x + d + w, L.y + o); x.stroke()
-    }
-  }
-  x.globalAlpha = 1
+// a stand of trees: overlapping canopy blobs, each with its west side lit
+function wood (g, px, py, sp) {
+  const b = []
+  for (let k = 6 + (rn() * 4 | 0); k--;) b.push([px + rf(-sp, sp), py + rf(-sp * 0.5, sp * 0.5), rf(11, 19)])
+  g.fillStyle = '#1e3a20'
+  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax, ay, r, 0, 6.2832); g.fill() }
+  g.fillStyle = '#3a6330'
+  for (const [ax, ay, r] of b) { g.beginPath(); g.arc(ax - r * 0.22, ay - r * 0.26, r * 0.7, 0, 6.2832); g.fill() }
 }

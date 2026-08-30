@@ -1,10 +1,11 @@
 import { S, W, H, T } from './state.js'
 import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged } from './sim.js'
-import { blit, shimmer, stars } from './terrain.js'
+import { blit, stars } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
 export const V = { s: 1, ox: 0, oy: 0 }
+let sky                                    // rebuilt on resize, painted in device pixels
 
 export function resize () {
   const dpr = Math.min(devicePixelRatio || 1, 2)
@@ -14,6 +15,9 @@ export function resize () {
   V.s = Math.min(w / W, h / H) * 0.72   // leave sky around the island
   V.ox = (w - W * V.s) / 2
   V.oy = (h - H * V.s) / 2
+  sky = x.createLinearGradient(0, 0, 0, cv.height)   // low sun: the glow band sits
+  for (const [o, c] of [[0, '#191038'], [0.42, '#5d2b4e'],   // behind the island's flanks
+    [0.66, '#c96a40'], [0.84, '#5a2733'], [1, '#22111f']]) sky.addColorStop(o, c)
 }
 export const toWorld = (px, py) => ({ x: (px - V.ox) / V.s, y: (py - V.oy) / V.s })
 
@@ -65,29 +69,31 @@ function ring (cx, cy, r, frac, c, w) {
 
 function label (t, cx, cy, size, c, weight) {
   x.font = (weight || '') + size + 'px ui-sans-serif,system-ui,sans-serif'
-  x.fillStyle = c; x.textAlign = 'center'; x.textBaseline = 'middle'
-  x.fillText(t, cx, cy)
+  x.textAlign = 'center'; x.textBaseline = 'middle'
+  x.shadowColor = '#100a04'; x.shadowBlur = 4    // a halo, or none of this reads on grass
+  x.fillStyle = c; x.fillText(t, cx, cy)
+  x.shadowBlur = 0
 }
 
 export function draw (dt) {
   place(dt)
   const w = cv.width, h = cv.height
   x.save(); x.setTransform(1, 0, 0, 1, 0, 0)
-  x.fillStyle = '#0b0a12'; x.fillRect(0, 0, w, h)
-  x.fillStyle = '#cfd3e8'                       // starfield lives in screen space,
+  x.fillStyle = sky; x.fillRect(0, 0, w, h)
+  x.fillStyle = '#ffeccf'                       // starfield lives in screen space,
   for (let k = 0; k < stars.length; k += 3) {   // so no window edge is ever bare
     x.globalAlpha = stars[k + 2]
     x.fillRect(stars[k] * w, stars[k + 1] * h, 2, 2)
   }
   x.globalAlpha = 1; x.restore()
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
-  blit(x); shimmer(x)
+  blit(x)
 
   // edges
   x.lineWidth = 2
   for (const [i, j] of S.E) {
     const a = S.C[i], b = S.C[j]
-    x.strokeStyle = seeRoad(i, j) ? '#4a4270' : '#2b2740'   // fogged roads grey, never gone
+    x.strokeStyle = seeRoad(i, j) ? '#2b2547' : '#5d6b55'   // fogged roads grey, never gone
     x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke()
   }
 
@@ -144,7 +150,7 @@ export function draw (dt) {
       x.strokeStyle = '#ff5a5a'; x.lineWidth = 2.5; x.stroke()
       x.globalAlpha = 1
     }
-    label(c.nm, c.x, c.y + r + 16, 11, lit ? '#e8e4f5cc' : '#e8e4f566')
+    label(c.nm, c.x, c.y + r + 16, 11, lit ? '#fff' : '#e8e4f5aa')
     label(lit ? '👥' + (c.p | 0) + '  🛡' + (c.s | 0) : '🌫️', c.x, c.y + r + 28, 10, '#e8e4f588')
     if (sel && sel.k === 'c' && sel.i === i) {
       x.setLineDash([4, 4]); x.beginPath(); x.arc(c.x, c.y, r + 11, 0, 6.2832)
