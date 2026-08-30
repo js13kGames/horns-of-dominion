@@ -50,10 +50,46 @@ export function hop (from, to) {
   return -1
 }
 
+// ---- loyalty --------------------------------------------------------------
+// move `a` points of a city's loyalty onto f, drawn proportionally from every
+// other realm, so the ledger always sums to 100 without needing to be renormed
+function shift (L, f, a) {
+  const r = 100 - L[f]
+  if (r < 0.01) return
+  const k = Math.min(a, r) / r
+  for (let q = 0; q < L.length; q++) if (q !== f) { const d = L[q] * k; L[q] -= d; L[f] += d }
+}
+// whose boots are on the ground here, and how many — a city is only held down
+// in proportion to the size of the crowd being sat on
+const grip = i => {
+  const p = {}
+  let f = -1
+  for (const a of at(i)) if ((p[a.o] = (p[a.o] || 0) + a.w) > (p[f] || 0)) f = a.o
+  return [f, p[f] || 0]
+}
+export const unrest = i => S.C[i].L[S.C[i].o] < T.loyMin
+
+// a city that will not stomach its occupier any longer takes up arms for
+// whoever it does love. The mob walks in through its own gates: no siege.
+function rebel (i) {
+  const c = S.C[i], L = c.L
+  let f = 0
+  for (let q = 1; q < L.length; q++) if (L[q] > L[f]) f = q
+  if (f === c.o || !S.F[f].alive || c.p < T.raiseP) return
+  c.p -= T.raiseP
+  c.rv = T.muster                                  // one rising at a time
+  shift(L, f, 12)
+  S.A.push({ id: nextId++, o: f, w: T.raiseW, a: i, t: -1, pr: 0, st: 0, dst: -1, rb: 1 })
+  const m = '✊ ' + c.nm + ' rises for ' + S.F[f].em
+  if (c.o === S.me || f === S.me) note(m)
+  else if (seeCity(i)) say(m)
+}
+
 // ---- player / AI actions -------------------------------------------------
 export const canRaise = (i, f) => {
   const c = S.C[i]
-  return c.o === f && !c.mu && !c.oc && c.p >= T.minPop && S.F[f].g >= T.raiseG
+  return c.o === f && !c.mu && !c.oc && c.L[f] > T.loyMin &&
+    c.p >= T.minPop && S.F[f].g >= T.raiseG
 }
 // gold and populace are spent now; the warriors take T.muster ticks to gather
 export function raise (i, f) {
@@ -267,6 +303,7 @@ export function tick () {
     const loss = T.sgLoss * c.d
     for (const a of here) a.w -= loss * (a.w / force)
     c.s -= force * T.sgDmg * (1 + S.tick / T.escal)   // long wars grind walls faster
+    if (here.some(a => a.rb)) c.s = 0                 // a rising needs no ram
     if (c.s <= 0) {
       const old = c.o
       if (f === S.me) S.stat.took++
@@ -276,6 +313,8 @@ export function tick () {
       c.s = c.m * T.garrison
       c.mu = c.rp = 0                            // the half-raised host scatters
       c.oc = T.occupy                            // a cowed city conscripts nobody
+      shift(c.L, f, T.seize)                     // some of it welcomes the change
+      for (const a of here) a.rb = 0
       if (seeCity(i)) {
         boom(c.x, c.y, 2, S.F[f].c)
         say(S.F[f].em + ' ' + c.nm + ' falls' + (old >= 0 ? ' from ' + S.F[old].em : ''))
@@ -293,6 +332,18 @@ export function tick () {
     const h = hop(a.a, a.dst)
     if (h < 0) { a.dst = -1; continue }
     a.t = h; a.pr = 0; a.hold = 0
+  }
+
+  // 5c. loyalty: a city pulls back toward the realm it was born to, while
+  // whoever garrisons it pulls harder the other way. Hold one long enough and
+  // it stops being anyone else's; hold it badly and it rises.
+  for (let i = 0; i < NC; i++) {
+    const c = S.C[i], [g, gw] = grip(i)
+    if (g >= 0) shift(c.L, g, T.pace * S.F[g].dm.pac * Math.min(1, gw / (c.p * T.hold)))
+    shift(c.L, c.na, T.loy * Math.min(1, cnt(c.na) / 3))
+    if (c.L[c.o] > T.assim) c.na = c.o
+    if (c.rv) c.rv--
+    else if (c.o !== c.na && c.L[c.o] < T.revolt) rebel(i)
   }
 
   // 6. paid repairs and passive mending, both halted while enemies are at the gates

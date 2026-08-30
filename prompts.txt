@@ -247,7 +247,30 @@ The first attempt at this failed in a way worth mentioning: the peaks vanished e
 Headroom is down to 612 B, so it's worth knowing that's the tightest it's been.
 
 
-# Pending Topics
+# Round 11
+1. Add Loyalty: Cities have loyalty toward each faction (total sum 100), and a "native" faction (based on the initial assignment). Cities will actively recover loyalty towards their native faction, decreasing loyalty to others. Cities with an occupying enemy army have loyalty towards the ocuppying faction increase over time, outpacing the recovery to the native faction. Occupied Cities with low loyalty below 20 can rebel, in which case they'll raise an army of the dominating faction instantly and place it on the city. If there is an army on the city they will fight it, if there is no army, or after defeating the army, they will occupy the city (no siege needed). Player can only raise armies on a city if their loyalty is above 60. Loyalty should be displayed in the city stats. Cities that are being pacified (loyalty < 60) should have an indicator in the map.
+
+## Resolution
+
+Loyalty is in and the game still resolves. 13,216 B of 13,312 — 96 B headroom, so it fits, just.
+
+The mechanic. Each city carries a 5-slot ledger summing to 100 plus a native realm from the draft. One helper moves points onto a faction proportionally from the others, so the ledger never needs renormalising. Per tick: whichever host stands in the city pulls loyalty toward its owner, the native realm pulls back, a city over 80% loyal to its holder becomes native to them, and an occupier under 20% gets a rising. The rebel host is flagged rb, which zeroes the walls the moment it acts — it reuses the whole existing capture path, so it walks in without a siege but still fights anything garrisoned there first. canRaise gained the 60% gate, which the AI inherits automatically since it calls the same function.
+
+Two things I had to add beyond your spec, both because the total-conquest victory stopped being reachable:
+
+- Assimilation. Without it a conquered city drifts back to native forever and must be garrisoned permanently. The first run gave 4 stalemates in 200 and a 92,000-tick tail.
+- The native pull scales with how much of the map the native realm still holds. This one was a genuine feedback loop: a rising hands a dead realm an army, the army keeps it flagged alive, so its cities keep rising for it, forever. Scaling by min(1, cnt(native)/3) means a swept-away realm stops rallying anyone, and conquest accelerates as you win.
+
+Both are single tunables if you want them off.
+
+Balance. 400 games across two independent seed ranges: zero stalemates, p50 ~4,345 ticks, nothing over 24k. Wins stay flat across the five realms. Games are genuinely longer than before — p90 went 5,950 → ~7,400 and p99 9,427 → ~13,000 — which is the honest cost of having to hold what you take.
+
+The ladder compressed to 0/24/36/46 because loyalty taxes fast expanders hardest, same as occupation did in round 6. Gold couldn't fix it — under loyalty the bottleneck is holding ground, not economy, so I added a per-rung pacification multiplier. That's now the dominant lever (my first guess overshot to 63/77) and the ladder is back at 0 / 24 / 44 / 63.
+
+cmd-test gained eight assertions covering the ledger, the drift, the garrison outpulling it, both sides of the raise gate, and a rising taking a city with its walls still at 65.
+
+
+
+# Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)
-3. Add loyalty, conquered cities have low loyalty. Low loyalty cities can rebel. Loyalty builds as you invest resources or keep troops.

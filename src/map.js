@@ -104,7 +104,7 @@ export function genMap (sd) {
     c.e = ri(3, 12)
     c.m = ri(20, 80)
     c.s = c.m
-    c.mu = c.rp = c.oc = 0   // mustering, walls owed, occupation
+    c.mu = c.rp = c.oc = c.rv = 0   // mustering, walls owed, occupation, rising cooldown
   }
 
   // five capitals, as far apart as the graph allows
@@ -154,6 +154,10 @@ export function genMap (sd) {
       break
     }
   }
+
+  // loyalty: every city is born mostly loyal to the realm that drafted it, and
+  // remembers that realm as native however often it changes hands
+  C.forEach(c => { c.na = c.o; c.L = REALMS.map((_, q) => q === c.o ? 76 : 6) })
 
   S.F = REALMS.map(([nm, c, em], i) => ({ nm, c, em, ai: i !== S.me, g: 60, alive: 1 }))
   S.stat = { took: 0, lost: 0, slain: 0, most: 0 }

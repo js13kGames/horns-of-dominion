@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest } from './sim.js'
 import { blit, clouds, stars } from './terrain.js'
 
 export const cv = document.getElementById('cv')
@@ -144,6 +144,7 @@ export function draw (dt) {
       ring(c.x, c.y, r + 9, 1 - c.mu / T.muster, '#ffd76a', 2)
       label('⏳', c.x + r + 6, c.y - r - 2, 12)
     }
+    if (lit && unrest(i)) label('✊', c.x - r - 6, c.y - r - 2, 12)   // still being pacified
     if (lit && besieged(i)) {                  // a city under attack keeps pulsing
       const q = 0.5 + 0.5 * Math.sin(S.elapsed * 6)
       x.globalAlpha = 0.25 + q * 0.55

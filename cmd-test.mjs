@@ -133,5 +133,70 @@ S.A = [put(991, 0, 300, foe, -1)]
 tick()
 ok(S.A[0].sg === foe && S.A[0].eg.length === 1, 'a siege records the city as the defender')
 
+// --- 8. loyalty: pull, drift, the raise gate, and a rising -----------------
+fresh()
+const mine = S.C.findIndex(c => c.o === 0)
+ok(Math.abs(S.C[mine].L.reduce((x, y) => x + y, 0) - 100) < 1e-6, 'loyalty sums to 100')
+ok(S.C[mine].na === S.C[mine].o, 'a city starts native to the realm that drafted it')
+
+// a garrison drags a city its way, and faster than the natives pull back
+fresh()
+const theirs = S.C.findIndex(c => c.o !== 0)
+S.C[theirs].L = [50, 50, 0, 0, 0]; S.C[theirs].o = 1; S.C[theirs].na = 1
+S.A = []
+let was = S.C[theirs].L[0]
+for (n = 0; n < 40; n++) tick()
+ok(S.C[theirs].L[0] < was, 'with nobody standing there, loyalty drifts to the native realm')
+S.C[theirs].L = [50, 50, 0, 0, 0]
+S.A = [put(1001, 0, 200, theirs, -1)]
+was = S.C[theirs].L[0]
+for (n = 0; n < 40; n++) tick()
+ok(S.C[theirs].L[0] > was, 'a garrison outpulls the natives')
+
+// a garrison holds a city down in proportion to the crowd, not by merely being
+// present — otherwise one warrior split off a host pacifies as well as the host
+fresh()
+const pace = (w, pop) => {
+  const k = S.C.findIndex(c => c.o !== 0)
+  const nat = S.C[k].o
+  S.C[k].o = 0; S.C[k].na = nat; S.C[k].p = pop
+  S.C[k].L = [45, 0, 0, 0, 0]; S.C[k].L[nat] = 55
+  S.A = w ? [put(1000, 0, w, k, -1)] : []
+  for (n = 0; n < 400; n++) tick()
+  return S.C[k].L[0]
+}
+const token = pace(1, 120), proper = pace(120 * T.hold, 120)
+ok(token < 45, `a single warrior cannot hold a city of 120 down (${token.toFixed(0)}%)`)
+ok(proper > 80, `${120 * T.hold} warriors can (${proper.toFixed(0)}%)`)
+ok(pace(30, 400) < pace(30, 100), 'the same garrison does less in a bigger city')
+
+// the raise gate
+fresh()
+S.F[0].g = 999
+const home = S.C.findIndex(c => c.o === 0)
+S.C[home].L = [90, 10, 0, 0, 0]
+ok(canRaise(home, 0), 'a loyal city conscripts')
+S.C[home].L = [T.loyMin - 5, 100 - T.loyMin + 5, 0, 0, 0]
+ok(!canRaise(home, 0), `a city under ${T.loyMin}% loyal refuses`)
+ok(!raise(home, 0), 'and the order is rejected outright')
+
+// a rising: the mob takes up arms for whoever it does love, and walks in
+fresh()
+const held = S.C.findIndex(c => c.o !== 0)
+const nat = S.C[held].o
+S.C[held].o = 0                                  // I hold it, they do not love me
+S.C[held].na = nat
+S.C[held].L = [T.revolt - 5, 0, 0, 0, 0]
+S.C[held].L[nat] = 100 - (T.revolt - 5)
+S.C[held].p = 200; S.C[held].s = S.C[held].m; S.C[held].rv = 0
+S.A = []
+for (n = 0; n < 6 && !S.A.length; n++) tick()
+ok(S.A.length === 1 && S.A[0].o === nat, 'a despised city rises for the realm it loves')
+ok(S.A[0].rb, 'the rising is marked to walk in rather than lay siege')
+const wall = S.C[held].s
+for (n = 0; n < 6 && S.C[held].o === 0; n++) tick()
+ok(S.C[held].o === nat, 'and it takes the city back')
+ok(wall > 1, `without a siege — walls were still standing at ${wall.toFixed(0)}`)
+
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

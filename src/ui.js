@@ -33,12 +33,15 @@ export function ui () {
       row('🛡 Defenses', lit ? (c.s | 0) + ' / ' + c.m : q) +
       row('⚔️ Defense', lit ? c.d : q) +
       row('💎 Economy', lit ? c.e : q) +
+      row('✊ Loyalty', lit ? (c.L[c.o] | 0) + '% · native ' + S.F[c.na].em : q) +
       (own
         ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.oc
             ? `🔒 Cowed — ${(c.oc / T.muster).toFixed(1)} musters`
-            : c.mu
+            : c.L[S.me] <= T.loyMin
+              ? `✊ Restless ${c.L[S.me] | 0}% — garrison ${Math.ceil(c.p * T.hold)}`
+              : c.mu
               ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
-              : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
+                : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
           `${btn('f', s.i, canFix(s.i, S.me), c.rp
             ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
             : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`

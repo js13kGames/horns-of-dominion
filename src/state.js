@@ -50,15 +50,22 @@ export const T = {
   dying: 2,         // a realm down to this many cities starts to crumble
   rot: 0.5 * P,     // wall points its holdings shed per tick while crumbling
   starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
-  escal: 5000 / P   // sieges grind faster every this many ticks
+  escal: 5000 / P,  // sieges grind faster every this many ticks
+  loy: 0.5 * P,     // loyalty a city wins back toward its native realm, per tick
+  pace: 4 * P,      // loyalty a garrison pulls its own way — it must beat `loy`
+  hold: 0.25,       // warriors per head of populace for a garrison to pull at full weight
+  seize: 45,        // loyalty the captor is granted the moment a city falls
+  loyMin: 60,       // below this a city will not conscript for whoever holds it
+  revolt: 20,       // an occupier this unloved gets a rising
+  assim: 80         // held this thoroughly, a city counts as native-born
 }
 
-// --- difficulty: AI-only multipliers on economy, decisions per turn, army cap ---
+// --- difficulty: AI-only multipliers on economy, decisions, army cap, occupation ---
 export const D = [
-  { nm: 'Dreamer', inc: 0.5, acts: 1, cap: 0.5 },
-  { nm: 'Duelist', inc: 1, acts: 1, cap: 1 },
-  { nm: 'Warlord', inc: 1.6, acts: 2, cap: 1.45 },
-  { nm: 'Tyrant', inc: 2.3, acts: 3, cap: 1.9 }
+  { nm: 'Dreamer', inc: 0.5, acts: 1, cap: 0.5, pac: 0.6 },
+  { nm: 'Duelist', inc: 1, acts: 1, cap: 1, pac: 1 },
+  { nm: 'Warlord', inc: 1.6, acts: 2, cap: 1.45, pac: 1.15 },
+  { nm: 'Tyrant', inc: 2.3, acts: 3, cap: 1.9, pac: 1.62 }
 ]
 export const applyDiff = () => S.F.forEach(f => { f.dm = f.ai ? D[S.diff] : D[1] })
 
