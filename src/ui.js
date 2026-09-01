@@ -1,5 +1,6 @@
 import { S, T, WIN, NC, D } from './state.js'
 import { REALMS } from './map.js'
+import { mute, muted } from './audio.js'
 import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
@@ -16,7 +17,8 @@ export function ui () {
     `<span>🏰 <b>${n}</b>/${NC}</span>` +
     `<div class=bar><i style=width:${Math.min(100, n / WIN * 100)}%></i></div>` +
     `<span style=opacity:.55>${S.F.map((f, i) => f.alive ? `<span style=color:${f.c}>${f.em}${cnt(i)}</span>` : '').join(' ')}</span>` +
-    `<div class=sp>${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
+    `<div class=sp><button data-a=q>${muted ? '🔇' : '🔊'}</button>` +
+    `${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
 
   set(lg, S.log.map(l => `<div>${l}</div>`).join(''))
@@ -150,6 +152,7 @@ addEventListener('click', e => {
   else if (a === 'k') S.aim = 0
   else if (a === 'b') { const h = getArmy(S.sel && S.sel.i); if (h) order(h, h.a) }
   else if (a === 'f') fix(i, S.me)
+  else if (a === 'q') mute()
   else if (a === 'v') S.speed = i
   else if (a === 'd') { S.diff = i; title() }
   else if (a === 's') hooks.start(i)

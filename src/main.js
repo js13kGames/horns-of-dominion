@@ -5,6 +5,7 @@ import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
 import { paint } from './terrain.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
+import { grind, music, mute } from './audio.js'
 
 const TICK = 0.5          // seconds of real time per tick at 1×
 let acc = 0, last = 0, playing = 0
@@ -21,12 +22,13 @@ hooks.start = f => {
   S.me = f
   S.F.forEach((x, i) => { x.ai = i !== f })
   applyDiff()
-  clearOv(); playing = 1; ui()
+  clearOv(); playing = 1; music(1); ui()
 }
 hooks.again = () => { fresh(); title(); playing = 0 }
 
 function frame (ts) {
   requestAnimationFrame(frame)
+  grind()                   // renders the song a slice at a time, then stops costing anything
   const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0
   last = ts
   if (playing && !S.over) {
@@ -75,6 +77,7 @@ addEventListener('keydown', e => {
   else if (k === '2') S.speed = 2
   else if (k === '3') S.speed = 4
   else if (k === '4') S.speed = 8
+  else if (k === 'm') mute()
   else if (k === 'Escape') { if (S.aim) S.aim = 0; else S.sel = null }
   ui()
 })

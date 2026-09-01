@@ -269,6 +269,9 @@ The ladder compressed to 0/24/36/46 because loyalty taxes fast expanders hardest
 
 cmd-test gained eight assertions covering the ledger, the drift, the garrison outpulling it, both sides of the raise gate, and a rising taking a city with its walls still at 65.
 
+# Round 12
+Add music 
+
 
 
 # Pending topics
