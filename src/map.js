@@ -49,7 +49,7 @@ export function genMap (sd) {
   S.A = []
   S.fx = []
   S.log = []
-  S.over = 0; S.sel = null; S.aim = 0; S.tick = 0; S.elapsed = 0; S.speed = 1
+  S.over = 0; S.sel = null; S.tick = 0; S.elapsed = 0; S.speed = 1
 
   // best-candidate sampling: even spread without min-distance failures
   for (let i = 0; i < NC; i++) {

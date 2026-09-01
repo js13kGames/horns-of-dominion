@@ -77,7 +77,7 @@ export const S = {
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
   log: [],
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, toast: '', toastT: 0, split: 1, aim: 0, diff: 2,
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, elapsed: 0, alpha: 0, toast: '', toastT: 0, split: 1, diff: 2,
   stat: { took: 0, lost: 0, slain: 0, most: 0 }
 }
 

@@ -27,6 +27,7 @@ let rafq = []
 globalThis.requestAnimationFrame = f => rafq.push(f)
 
 const { S } = await import('./src/state.js')
+const { active } = await import('./src/sim.js')
 await import('./src/main.js')
 
 const step = (n, ms = 16.7) => {
@@ -102,32 +103,32 @@ ok(S.A.length === n0 + 1, 'the warband appears once mustered')
 const army = S.A[S.A.length - 1]
 ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
-// selecting your own host arms targeting with no second click
+// picking a host up is what puts it under command — the map is its order sheet
 step(1)
 tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
-ok(S.aim === army.id, 'and arms targeting immediately')
+ok(active() === army, 'and that alone puts it under command')
+ok(!/Mobilize|Cancel|Turn back/.test(els.pan.innerHTML), 'the panel offers no command buttons')
 
-// with targeting cancelled, a city click is only a selection
-click('k', 0)
-ok(!S.aim, 'Cancel disarms targeting')
 const dest = S.C[mine].n[0]
 tap(S.C[dest].x, S.C[dest].y)
-ok(army.t < 0, 'with targeting off, clicking a city does not move the host')
-ok(S.sel.k === 'c' && S.sel.i === dest, 'it selects that city instead')
+ok(army.t === dest, 'clicking a city marches it there')
+ok(active() === army, 'and it stays under command, so the order can be redirected')
 
-tap(army.rx, army.ry)
-ok(S.aim === army.id, 'reselecting the host re-arms it')
+// a city always wins the hit test over a host standing on it, or a march could
+// never be turned around: at pr 0 the host sits exactly on the city it left
+tap(S.C[mine].x, S.C[mine].y)
+ok(army.t === mine && army.a === dest, 'clicking the city it left turns the march around')
+
+tap(6, 6)                                  // empty sky
+ok(!active() && !S.sel, 'clicking anywhere else stands the warband down')
+
 tap(S.C[dest].x, S.C[dest].y)
-ok(army.t === dest && !S.aim, 'the next city click becomes the destination')
+ok(S.sel.k === 'c' && S.sel.i === dest, 'with nothing under command a city click only selects')
 
-step(1)
 tap(army.rx, army.ry)
-click('m', 0); ok(S.aim === army.id, 'Mobilize can also arm it explicitly')
 win.h.keydown({ key: 'Escape' })
-ok(!S.aim && S.sel, 'Escape cancels targeting first')
-win.h.keydown({ key: 'Escape' })
-ok(!S.sel, 'and clears the selection on the second press')
+ok(!S.sel && !active(), 'escape stands it down')
 
 // interpolation: the drawn position must advance between ticks, not only on them
 step(1)
@@ -186,7 +187,7 @@ const h = S.A[0]
 step(2)
 tap(h.rx, h.ry)
 ok(S.sel && S.sel.k === 'a', 'the planted warband selects')
-ok(/Split off/.test(els.pan.innerHTML), 'a resting warband offers Split')
+ok(/Split/.test(els.pan.innerHTML), 'a resting warband offers Split')
 typeIn('sl', 40)
 ok(S.split === 40, 'dragging the slider updates the split size')
 click('x', 0)

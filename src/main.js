@@ -1,6 +1,6 @@
 import { S, applyDiff } from './state.js'
 import { genMap } from './map.js'
-import { tick, getArmy, order, seeArmy } from './sim.js'
+import { tick, order, seeArmy, active } from './sim.js'
 import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
 import { paint } from './terrain.js'
@@ -41,6 +41,8 @@ function frame (ts) {
     if (S.over) ending()
   }
   draw(dt)
+  const cur = active() ? 'crosshair' : ''   // the cursor says the map is armed
+  if (cv.style.cursor !== cur) cv.style.cursor = cur
   ui()
 }
 
@@ -57,16 +59,14 @@ cv.addEventListener('pointerdown', e => {
     const c = S.C[i]
     if (Math.hypot(c.x - p.x, c.y - p.y) < cityR(c) + 6) { hc = i; break }
   }
-  if (S.aim) {                          // targeting: the next city is a destination
-    const a = getArmy(S.aim)
-    const to = hc >= 0 ? hc : ha && ha.t < 0 ? ha.a : -1
-    if (a && to >= 0) order(a, to)
-    S.aim = 0
+  const act = active()
+  if (act) {                            // a warband is up: the map is its order sheet
+    const to = hc >= 0 ? hc : ha && ha.t < 0 ? ha.a : -1   // a city, or a host resting on one
+    if (to >= 0) order(act, to)
+    else S.sel = null                   // anywhere else stands it down
     return ui()
   }
-  // a click selects; picking up one of your own hosts arms targeting straight away
   S.sel = ha ? { k: 'a', i: ha.id } : hc >= 0 ? { k: 'c', i: hc } : null
-  S.aim = ha && ha.o === S.me ? ha.id : 0
   ui()
 })
 
@@ -78,7 +78,7 @@ addEventListener('keydown', e => {
   else if (k === '3') S.speed = 4
   else if (k === '4') S.speed = 8
   else if (k === 'm') mute()
-  else if (k === 'Escape') { if (S.aim) S.aim = 0; else S.sel = null }
+  else if (k === 'Escape') S.sel = null
   ui()
 })
 

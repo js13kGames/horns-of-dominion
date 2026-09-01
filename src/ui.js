@@ -1,7 +1,7 @@
 import { S, T, WIN, NC, D } from './state.js'
 import { REALMS } from './map.js'
 import { mute, muted } from './audio.js'
-import { raise, fix, split, order, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
+import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov'), ts = $('toast')
@@ -52,7 +52,7 @@ export function ui () {
   }
 
   const a = getArmy(s.i)
-  if (!a) { S.sel = null; S.aim = 0; return set(pan, '') }
+  if (!a) { S.sel = null; return set(pan, '') }
   const mine = a.o === S.me
   set(pan, '<h3>🦄 Warband</h3>' +
     row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
@@ -61,18 +61,9 @@ export function ui () {
       ? `${a.st ? '⚔️' : '→'} ${S.C[a.t].nm} ${(prog(a) * 100) | 0}%`
       : `at ${S.C[a.a].nm}`) +
     (a.dst >= 0 && a.dst !== a.t ? row('Bound for', S.C[a.dst].nm) : '') +
-    (mine
-      ? `<div class=acts>` +
-        (S.aim === a.id ? btn('k', 0, 1, '✖ Cancel') : btn('m', 0, 1, '🎯 Mobilize')) +
-        (a.t >= 0
-          ? btn('b', 0, 1, `↩ Turn back${a.st ? ` — ⚠️ ${T.flee * 100 | 0}% lost` : ''}`)
-          : '') +
-        (canSplit(a)
-          ? `<div class=sr><input type=range id=sl><b id=slv></b></div>${btn('x', 0, 1, '✂️ Split off')}`
-          : '') +
-        `</div><div class=hint>${S.aim === a.id
-          ? '🎯 Choose a destination on the map.'
-          : 'Mobilize to march anywhere on the map.'}</div>`
+    (mine && canSplit(a)
+      ? `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
+        `${btn('x', 0, 1, '✂️ Split')}</div>`
       : ''))
   sync(a)
 }
@@ -128,9 +119,6 @@ addEventListener('click', e => {
   const a = el.dataset.a, i = +el.dataset.i
   if (a === 'r') raise(i, S.me)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
-  else if (a === 'm') S.aim = S.sel && S.sel.i
-  else if (a === 'k') S.aim = 0
-  else if (a === 'b') { const h = getArmy(S.sel && S.sel.i); if (h) order(h, h.a) }
   else if (a === 'f') fix(i, S.me)
   else if (a === 'q') mute()
   else if (a === 'v') S.speed = i

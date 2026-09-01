@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active } from './sim.js'
 import { blit } from './terrain.js'
 
 export const cv = document.getElementById('cv')
@@ -121,7 +121,7 @@ export function draw (dt) {
   }
 
   // while mobilizing, every city is a legal destination — say so
-  if (S.aim) {
+  if (active()) {
     x.setLineDash([3, 3]); x.lineWidth = 1.5; x.strokeStyle = '#ffffff55'
     for (const c of S.C) { x.beginPath(); x.arc(c.x, c.y, cityR(c) + 7, 0, 6.2832); x.stroke() }
     x.setLineDash([])

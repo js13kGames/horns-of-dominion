@@ -2,6 +2,12 @@ import { S, T, WIN, NC, rnd, rf, dist, say, note, boom } from './state.js'
 
 let nextId = 1
 export const getArmy = id => S.A.find(a => a.id === id)
+// the host under command: selecting one of your own is what arms it, so there
+// is no separate targeting flag to set, clear, or keep in sync
+export const active = () => {
+  const a = S.sel && S.sel.k === 'a' && getArmy(S.sel.i)
+  return a && a.o === S.me ? a : null
+}
 export const cnt = f => S.C.reduce((n, c) => n + (c.o === f), 0)
 const at = i => S.A.filter(a => a.t < 0 && a.a === i)
 
