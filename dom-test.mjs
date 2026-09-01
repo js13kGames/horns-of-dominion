@@ -108,7 +108,8 @@ step(1)
 tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
 ok(active() === army, 'and that alone puts it under command')
-ok(!/Mobilize|Cancel|Turn back/.test(els.pan.innerHTML), 'the panel offers no command buttons')
+ok(!/Banner|Warriors|Status|Bound for/.test(els.pan.innerHTML),
+  'the panel carries no readout — banner, strength and march are all on the map')
 
 const dest = S.C[mine].n[0]
 tap(S.C[dest].x, S.C[dest].y)
@@ -144,14 +145,8 @@ if (army.t >= 0) {
   S.sel = null
   tap(army.rx, army.ry)
   ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'a marching warband is clickable at its drawn spot')
-  step(1)
-  const back = army.a
-  ok(/Turn back/.test(els.pan.innerHTML), 'a marching warband offers Turn back')
-  click('b', 0)
-  ok(army.t === back, 'Turn back reverses it')
 } else {
-  ok(1, 'warband arrived before the turn-back check could run')
-  ok(1, '-'); ok(1, '-')
+  ok(1, 'warband arrived before the drawn-spot check could run')
 }
 
 // repair
@@ -195,11 +190,10 @@ ok(S.A.length === 2 && S.A[0].w + S.A[1].w === 120, 'splitting conserves warrior
 ok(S.A.every(a => a.hold), 'both halves are held apart')
 
 tap(h.rx, h.ry)
-click('m', 0)
 tap(S.C[far].x, S.C[far].y)
 ok(h.dst === far && h.t >= 0 && h.t !== far, 'mobilizing to a far city sets a multi-hop march')
 step(3)
-ok(/Bound for/.test(els.pan.innerHTML), 'the panel names the final destination')
+ok(h.dst === far && h.t >= 0, 'and keeps heading for it leg by leg')
 
 // a fight the player is inside
 S.A = [
@@ -210,7 +204,10 @@ S.speed = 4
 step(20)
 S.sel = { k: 'a', i: 5002 }
 step(2)
-ok(/🦄 Warband/.test(els.pan.innerHTML), 'the warband panel renders for a host in a fight')
+ok(!/Banner|Warriors|Status/.test(els.pan.innerHTML), 'nor for a host in a fight')
+S.sel = { k: 'a', i: 5003 }; step(1)
+ok(els.pan.innerHTML === '', 'and an enemy host gets no panel at all')
+S.sel = { k: 'a', i: 5002 }; step(1)
 const eng = S.A.find(a => a.id === 5002)
 ok(eng && eng.eg && eng.eg.length >= 2, 'and the engagement is recorded, so the map can ring it')
 

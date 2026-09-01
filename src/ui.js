@@ -1,7 +1,7 @@
 import { S, T, WIN, NC, D } from './state.js'
 import { REALMS } from './map.js'
 import { mute, muted } from './audio.js'
-import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, prog, seeCity } from './sim.js'
+import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov'), ts = $('toast')
@@ -53,18 +53,9 @@ export function ui () {
 
   const a = getArmy(s.i)
   if (!a) { S.sel = null; return set(pan, '') }
-  const mine = a.o === S.me
-  set(pan, '<h3>🦄 Warband</h3>' +
-    row('Banner', S.F[a.o].em + ' ' + S.F[a.o].nm) +
-    row('Warriors', a.w | 0) +
-    row('Status', a.t >= 0
-      ? `${a.st ? '⚔️' : '→'} ${S.C[a.t].nm} ${(prog(a) * 100) | 0}%`
-      : `at ${S.C[a.a].nm}`) +
-    (a.dst >= 0 && a.dst !== a.t ? row('Bound for', S.C[a.dst].nm) : '') +
-    (mine && canSplit(a)
-      ? `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
-        `${btn('x', 0, 1, '✂️ Split')}</div>`
-      : ''))
+  if (a.o !== S.me || !canSplit(a)) return set(pan, '')
+  set(pan, `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
+    `${btn('x', 0, 1, '✂️ Split')}</div>`)
   sync(a)
 }
 
