@@ -2,6 +2,8 @@ import * as esbuild from 'esbuild'
 import { Packer } from 'roadroller'
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync } from 'fs'
 import { execSync } from 'child_process'
+import { crc32, deflateRawSync } from 'zlib'
+import zopfli from '@gfx/zopfli'
 import http from 'http'
 
 const LIMIT = 13312
@@ -49,6 +51,44 @@ async function pack (js) {
   return firstLine + secondLine
 }
 
+// Info-ZIP writes 170 B of container and its deflate lags zlib's by ~200 B, so
+// the archive is assembled here instead: one entry, no extra fields, and zopfli
+// doing the deflate. Everything a js13k submission needs and nothing else.
+let zipHow = ''
+async function zipOne (name, data) {
+  let body
+  try {
+    body = await zopfli.deflateAsync(data, { numiterations: 60 })
+    zipHow = 'hand-rolled, zopfli'
+  } catch {
+    body = deflateRawSync(data, { level: 9 })
+    zipHow = 'hand-rolled, zlib -9 (zopfli unavailable)'
+  }
+  const nm = Buffer.from(name)
+  const head = (sig, extra) => {
+    const b = Buffer.alloc(extra ? 46 : 30)
+    b.writeUInt32LE(sig, 0)
+    let o = extra ? 6 : 4
+    if (extra) b.writeUInt16LE(20, 4)          // version made by
+    b.writeUInt16LE(20, o); b.writeUInt16LE(0, o + 2)      // version needed, flags
+    b.writeUInt16LE(8, o + 4)                              // deflate
+    b.writeUInt16LE(0, o + 6); b.writeUInt16LE(33, o + 8)  // 1980-01-01, fixed so builds match
+    b.writeUInt32LE(crc32(data), o + 10)
+    b.writeUInt32LE(body.length, o + 14)
+    b.writeUInt32LE(data.length, o + 18)
+    b.writeUInt16LE(nm.length, o + 22)
+    return b
+  }
+  const lfh = head(0x04034b50, 0)
+  const cdh = head(0x02014b50, 1)
+  const eocd = Buffer.alloc(22)
+  eocd.writeUInt32LE(0x06054b50, 0)
+  eocd.writeUInt16LE(1, 8); eocd.writeUInt16LE(1, 10)
+  eocd.writeUInt32LE(cdh.length + nm.length, 12)
+  eocd.writeUInt32LE(lfh.length + nm.length + body.length, 16)
+  return Buffer.concat([lfh, nm, body, cdh, nm, eocd])
+}
+
 async function build () {
   const css = readFileSync('src/style.css', 'utf8')
   const fold = !DEV && !RAW              // stylesheet inside the packed payload?
@@ -69,11 +109,7 @@ async function build () {
 
   const raw = Buffer.byteLength(html)
   rmSync('dist/game.zip', { force: true })
-  execSync('zip -9 -q -j dist/game.zip dist/index.html')
-  let recompressed = ''
-  for (const packer of ['advzip -z -4', 'ect -9 -zip']) {
-    try { execSync(`${packer} dist/game.zip >/dev/null 2>&1`); recompressed = packer.split(' ')[0]; break } catch {}
-  }
+  writeFileSync('dist/game.zip', await zipOne('index.html', Buffer.from(html)))
   const zipped = statSync('dist/game.zip').size
   const left = LIMIT - zipped
   const pct = ((zipped / LIMIT) * 100).toFixed(1)
@@ -81,9 +117,7 @@ async function build () {
   if (!QUIET) {
     console.log(`  raw    ${raw.toLocaleString()} B` +
       (DEV || RAW ? '' : '  (roadroller-packed)'))
-    console.log(recompressed
-      ? `  zip    -9 then ${recompressed}`
-      : '  zip    -9 only — no advzip or ect on PATH, bytes are being left behind')
+    console.log(`  zip    ${zipHow}`)
     console.log(`  zipped ${zipped.toLocaleString()} B / ${LIMIT.toLocaleString()} B  (${pct}%)`)
     console.log(left >= 0 ? `  headroom ${left.toLocaleString()} B` : `  OVER BUDGET by ${(-left).toLocaleString()} B`)
   } else {

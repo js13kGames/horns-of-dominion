@@ -9,6 +9,7 @@
     "size": "node build.mjs --quiet"
   },
   "devDependencies": {
+    "@gfx/zopfli": "^1.0.15",
     "esbuild": "^0.25.0",
     "roadroller": "^2.1.0"
   }
