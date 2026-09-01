@@ -23,8 +23,11 @@
 *
 */
 
-// ALTERED SOURCE: the only change from the original player-small.js is that
-// CPlayer is exported as an ES module binding, so the bundler can reach it.
+// ALTERED SOURCE. Two changes from the original player-small.js:
+//   1. CPlayer is exported as an ES module binding, so the bundler can reach it.
+//   2. getData() is deleted. It sampled the mix buffer for real-time streaming
+//      playback; this game renders the whole track with createWave() instead,
+//      so nothing could ever call it.
 
 // Some general notes and recommendations:
 //  * This code uses modern ECMAScript features, such as ** instead of
@@ -346,15 +349,6 @@ export const CPlayer = function () {
         return wave;
     };
 
-    // Get n samples of wave data at time t [s]. Wave data in range [-2,2].
-    this.getData = function(t, n) {
-        var i = 2 * Math.floor(t * 44100);
-        var d = new Array(n);
-        for (var j = 0; j < 2*n; j += 1) {
-            var k = i + j;
-            d[j] = t > 0 && k < mMixBuf.length ? mMixBuf[k] / 32768 : 0;
-        }
-        return d;
-    };
+
 };
 
