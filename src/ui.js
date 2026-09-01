@@ -4,7 +4,7 @@ import { mute, muted } from './audio.js'
 import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
-const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov'), ts = $('toast')
+const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast')
 export const hooks = {}
 const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h } }
 const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' disabled'}>${txt}</button>`
@@ -18,7 +18,6 @@ export function ui () {
     `${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
 
-  set(lg, S.log.map(l => `<div>${l}</div>`).join(''))
   set(ts, S.toast ? `<div>${S.toast}</div>` : '')
 
   const s = S.sel

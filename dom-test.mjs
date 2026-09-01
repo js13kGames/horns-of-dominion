@@ -14,7 +14,7 @@ const ctx = new Proxy({}, {
   get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)),   // gradients chain
   set: (t, k, v) => (t[k] = v, true)
 })
-;['cv', 'hud', 'pan', 'log', 'ov'].forEach(mk)
+;['cv', 'hud', 'pan', 'ov'].forEach(mk)
 
 const win = { h: {} }
 globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null }
@@ -258,18 +258,18 @@ const watch = (at, n) => {
   return hit
 }
 
-S.fx = []; S.log = []; S.toast = ''
+S.fx = []; S.toast = ''
 S.A = [host(7001, 3, dark), host(7002, 4, dark)]
 ok(!watch(dark, 20), 'a battle in the fog draws no clash marker')
-ok(!S.log.some(l => l.includes(S.C[dark].nm)), 'and never reaches the log')
+ok(!S.toast, 'and raises nothing else the player could read')
 
-S.fx = []; S.log = []
+S.fx = []
 S.A = [host(7003, 3, near), host(7004, 4, near)]
 ok(watch(near, 20), 'the same battle in sight does draw one')
 
 // --- being attacked is announced ------------------------------------------
 const town = S.C.findIndex(c => c.o === S.me)
-S.fx = []; S.log = []; S.toast = ''
+S.fx = []; S.toast = ''
 S.A = [host(7005, 3, town)]
 ticks(4)
 ok(/under attack/.test(S.toast), 'an attack on your city raises a notification')

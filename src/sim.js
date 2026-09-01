@@ -1,4 +1,4 @@
-import { S, T, WIN, NC, rnd, rf, dist, say, note, boom } from './state.js'
+import { S, T, WIN, NC, rnd, rf, dist, note, boom } from './state.js'
 
 let nextId = 1
 export const getArmy = id => S.A.find(a => a.id === id)
@@ -86,9 +86,7 @@ function rebel (i) {
   c.rv = T.muster                                  // one rising at a time
   shift(L, f, 12)
   S.A.push({ id: nextId++, o: f, w: T.raiseW, a: i, t: -1, pr: 0, st: 0, dst: -1, rb: 1 })
-  const m = '✊ ' + c.nm + ' rises for ' + S.F[f].em
-  if (c.o === S.me || f === S.me) note(m)
-  else if (seeCity(i)) say(m)
+  if (c.o === S.me || f === S.me) note('✊ ' + c.nm + ' rises for ' + S.F[f].em)
 }
 
 // ---- player / AI actions -------------------------------------------------
@@ -184,7 +182,6 @@ const shattered = (g, vis) => {
   for (const a of g) {
     if (a.w > 0.5) continue
     if (a.o !== S.me) S.stat.slain++
-    if (vis && S.F[a.o].ai) say('💀 ' + S.F[a.o].em + ' host is shattered')
   }
 }
 
@@ -321,10 +318,7 @@ export function tick () {
       c.oc = T.occupy                            // a cowed city conscripts nobody
       shift(c.L, f, T.seize)                     // some of it welcomes the change
       for (const a of here) a.rb = 0
-      if (seeCity(i)) {
-        boom(c.x, c.y, 2, S.F[f].c)
-        say(S.F[f].em + ' ' + c.nm + ' falls' + (old >= 0 ? ' from ' + S.F[old].em : ''))
-      }
+      if (seeCity(i)) boom(c.x, c.y, 2, S.F[f].c)
     }
     S.A = S.A.filter(a => a.w > 0.5)
   }
@@ -392,7 +386,6 @@ export function tick () {
     const n = cnt(f)
     if (S.F[f].alive && !n && !S.A.some(a => a.o === f)) {
       S.F[f].alive = 0
-      say('☠️ ' + S.F[f].em + ' ' + S.F[f].nm + ' is undone')
     }
     if (n >= WIN) S.over = f === S.me ? 1 : -1
   }
