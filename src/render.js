@@ -1,6 +1,6 @@
 import { S, W, H, T } from './state.js'
 import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest } from './sim.js'
-import { blit, clouds, stars } from './terrain.js'
+import { blit } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
@@ -80,14 +80,9 @@ export function draw (dt) {
   const w = cv.width, h = cv.height
   x.save(); x.setTransform(1, 0, 0, 1, 0, 0)
   x.fillStyle = sky; x.fillRect(0, 0, w, h)
-  x.fillStyle = '#ffeccf'                       // starfield lives in screen space,
-  for (let k = 0; k < stars.length; k += 3) {   // so no window edge is ever bare
-    x.globalAlpha = stars[k + 2]
-    x.fillRect(stars[k] * w, stars[k + 1] * h, 2, 2)
-  }
-  x.globalAlpha = 1; x.restore()
+  x.restore()
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
-  clouds(x); blit(x)          // cloud passes behind the island, so it goes down first
+  blit(x)
 
   // edges
   x.lineWidth = 2; x.strokeStyle = '#d3b083'

@@ -15,8 +15,7 @@ const rf = (a, b) => a + rn() * (b - a)
 
 const N = 300                // coastline samples — a broken, rocky edge
 const R = []                 // radius per sample, around the city centroid
-let cx = 0, cy = 0, TR = [], CL = []
-export const stars = []      // drawn live in screen space, so no window is ever starless
+let cx = 0, cy = 0, TR = []
 
 const radAt = a => R[((((a / 6.2832 * N) | 0) % N) + N) % N]
 const inside = (px, py, m) => Math.hypot(px - cx, py - cy) + m < radAt(Math.atan2(py - cy, px - cx))
@@ -84,33 +83,24 @@ export function paint () {
   t0 = ((S.seed | 0) ^ 0x5f3759df) & 0x7fffffff || 1
   shape()
 
-  stars.length = 0               // only high up, where the sunset has not reached
-  for (let k = 0; k < 40; k++) stars.push(rn(), rn() * 0.38, rf(0.08, 0.3))
-
   bg.width = BW * Q; bg.height = BH * Q
   const g = bg.getContext('2d')
   g.setTransform(Q, 0, 0, Q, -BX * Q, -BY * Q)
 
-  // the underside: bare rock under the whole lower rim, tapering to a cone.
-  // The flanks bow out (u squared) so the rock hugs the island's full width
-  // before it narrows.
-  const half = N / 2 | 0
-  const tx = cx + rf(-40, 40), ty = cy + radAt(1.5708) + 215
-  const [sx, sy] = pt(0), [ex, ey] = pt(half)
-  g.beginPath(); g.moveTo(sx, sy)
-  for (let k = 1; k <= half; k++) { const [px, py] = pt(k); g.lineTo(px, py) }
-  for (let q = 1; q < 6; q++) {          // down the left flank in rough steps
-    const u = q / 6
-    g.lineTo(ex + (tx - ex) * u * u + rf(-16, 16), ey + (ty - ey) * u ** 0.6 + rf(-14, 14))
+  // the underside: the island's own outline stacked downward in shrinking
+  // slices. The coast is jagged, so the stack terraces into layered rock —
+  // and it costs a fraction of a bespoke keel path.
+  const ty = cy + radAt(1.5708) + 190
+  const tx = cx + rf(-40, 40)
+  for (let k = 7; k > 0; k--) {
+    const z = 1 - k * 0.085
+    g.save()
+    g.translate(cx, cy + k * 52); g.scale(z, z); g.translate(-cx, -cy)
+    coast(g)
+    g.fillStyle = `hsl(22 38% ${26 - k * 2}%)`
+    g.fill()
+    g.restore()
   }
-  g.lineTo(tx, ty)
-  for (let q = 5; q > 0; q--) {          // and back up the right one
-    const u = q / 6
-    g.lineTo(sx + (tx - sx) * u * u + rf(-16, 16), sy + (ty - sy) * u ** 0.6 + rf(-14, 14))
-  }
-  g.closePath()
-  g.fillStyle = grad(g, cy + radAt(1.5708) - 30, ty + 150, '#4a2c1a', '#1c0e0800')
-  g.fill()
 
   for (let k = 0; k < 3; k++) {    // rubble adrift below it
     g.globalAlpha = rf(0.35, 0.7); g.fillStyle = '#3b2318'
@@ -157,28 +147,6 @@ export function paint () {
     put.push([px, py]); n++
     peak(g, px, py, h, w, d)
   }
-
-  CL = []                          // sunset cloud, drifting; drawn live, behind the land
-  for (let k = 0; k < 8; k++) {
-    const p = []
-    for (let q = 3 + (rn() * 3 | 0); q--;) p.push([rf(-95, 95), rf(-14, 14), rf(40, 82), rf(15, 27)])
-    CL.push([rf(0, 2100), rf(-140, 780), rf(3, 9), p])
-  }
-}
-
-// clouds ride in front of the sky and behind the island, so they slide out of
-// sight behind the land and back into the open on the far side
-export function clouds (x) {
-  for (const [ox, cy2, v, p] of CL) {
-    const px = (ox + S.elapsed * v) % 2100 - 550
-    for (const [dx, dy, rx, ry] of p) {
-      x.globalAlpha = 0.15; x.fillStyle = '#6b4a70'
-      x.beginPath(); x.ellipse(px + dx, cy2 + dy, rx, ry, 0, 0, 6.2832); x.fill()
-      x.globalAlpha = 0.12; x.fillStyle = '#ffc79a'
-      x.beginPath(); x.ellipse(px + dx, cy2 + dy - ry * 0.4, rx * 0.78, ry * 0.66, 0, 0, 6.2832); x.fill()
-    }
-  }
-  x.globalAlpha = 1
 }
 
 const tri = (g, px, py, w, h, c) => {

@@ -73,8 +73,7 @@ export function ui () {
         `</div><div class=hint>${S.aim === a.id
           ? '🎯 Choose a destination on the map.'
           : 'Mobilize to march anywhere on the map.'}</div>`
-      : '') +
-    roster(a))
+      : ''))
   sync(a)
 }
 
@@ -89,25 +88,6 @@ function sync (a) {
   if (document.activeElement !== sl) sl.value = S.split
   const v = $('slv')
   if (v) v.textContent = S.split + ' of ' + (a.w | 0)
-}
-
-// who else is in this fight, and what they are defending
-function roster (a) {
-  if (!a.eg) return ''
-  const pow = {}
-  for (const id of a.eg) {
-    const b = getArmy(id)
-    if (b) pow[b.o] = (pow[b.o] || 0) + b.w
-  }
-  const rows = Object.keys(pow)
-    .sort((p, q) => (+q === a.o) - (+p === a.o))
-    .map(o => row(S.F[o].em + ' ' + S.F[o].nm, ((pow[o] | 0) || 1) + ' 🦄'))
-  let def = ''
-  if (a.sg >= 0) {
-    const c = S.C[a.sg]
-    def = row('🏰 ' + c.nm + ' ' + S.F[c.o].em, (c.s | 0) + '/' + c.m + ' 🛡 · ' + c.d + ' ⚔️')
-  }
-  return `<h3 class=bt>${a.sg >= 0 ? '🏰 Siege' : '⚔️ Battle'}</h3>` + rows.join('') + def
 }
 
 const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`

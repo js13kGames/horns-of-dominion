@@ -171,7 +171,7 @@ win.h.keydown({ key: 'Escape' })
 win.h.keydown({ key: 'Escape' })
 ok(S.sel === null && !S.aim, 'escape clears targeting, then the selection')
 
-// --- multi-hop marching, splitting, and the battle roster ------------------
+// --- multi-hop marching, splitting, and engagement bookkeeping -------------
 S.F[2].g = 999
 const home = S.C.findIndex(c => c.o === 2)
 S.C[home].p = 300
@@ -209,9 +209,9 @@ S.speed = 4
 step(20)
 S.sel = { k: 'a', i: 5002 }
 step(2)
-ok(/Battle|Siege/.test(els.pan.innerHTML), 'the battle roster panel renders')
-ok(S.F.filter((f, i) => els.pan.innerHTML.includes(f.em)).length >= 2,
-  'and lists both banners in the fight')
+ok(/🦄 Warband/.test(els.pan.innerHTML), 'the warband panel renders for a host in a fight')
+const eng = S.A.find(a => a.id === 5002)
+ok(eng && eng.eg && eng.eg.length >= 2, 'and the engagement is recorded, so the map can ring it')
 
 // --- fog of war ------------------------------------------------------------
 S.speed = 0                            // freeze the board so the fog is deterministic
