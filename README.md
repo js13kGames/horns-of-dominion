@@ -1,4 +1,4 @@
-# 🦄 Unicorn Overlord
+# 🦄 Horns of Dominion
 
 A real-time-with-pause strategy game for the 13KB budget. Take **every one** of the
 Rainbow Kingdom's 20 cities as a unicorn overlord: raise warbands from your cities'

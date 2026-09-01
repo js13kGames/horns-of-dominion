@@ -56,7 +56,7 @@ const tap = (wx, wy) => {  // world coords -> screen
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
 
-ok(/Unicorn Overlord/.test(els.ov.innerHTML), 'title screen renders')
+ok(/Horns of Dominion/.test(els.ov.innerHTML), 'title screen renders')
 ok(els.ov.innerHTML.split('class=realm ').length === 6, 'five realm cards offered')
 
 ok(/data-a=d/.test(els.ov.innerHTML), 'title offers difficulty rungs')
@@ -222,19 +222,18 @@ const near = S.C.findIndex((c, i) => c.o !== S.me && adj(i))
 ok(dark >= 0 && near >= 0, 'the map offers both a fogged and a bordering enemy city')
 
 S.sel = { k: 'c', i: dark }; step(1)
-ok(/unknown/.test(els.pan.innerHTML), 'a distant city hides its ruler')
-ok(/\?\?\?/.test(els.pan.innerHTML), 'and hides its numbers')
+ok(/\?\?\?/.test(els.pan.innerHTML), 'a distant city hides its numbers')
 
 S.sel = { k: 'c', i: near }; step(1)
-ok(!/unknown/.test(els.pan.innerHTML), 'a city bordering mine reports its true ruler')
+ok(!/\?\?\?/.test(els.pan.innerHTML), 'a city bordering mine reports its numbers')
 
 // scouting is live: present a host, the fog lifts; withdraw, it closes
 const scout = { id: 6001, o: 2, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
 S.A = [scout]
 S.sel = { k: 'c', i: dark }; step(2)
-ok(!/unknown/.test(els.pan.innerHTML), 'a warband standing there lifts the fog')
+ok(!/\?\?\?/.test(els.pan.innerHTML), 'a warband standing there lifts the fog')
 S.A = []; step(2)
-ok(/unknown/.test(els.pan.innerHTML), 'and the fog closes again when it withdraws')
+ok(/\?\?\?/.test(els.pan.innerHTML), 'and the fog closes again when it withdraws')
 
 // hosts inside the fog are neither drawn nor clickable
 S.A = [{ id: 6002, o: 3, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
@@ -299,12 +298,12 @@ S.A = []; S.fx = []; S.toast = ''
 S.speed = 8
 for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
-ok(/New kingdom/.test(els.ov.innerHTML), 'end screen renders')
+ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
 ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
 ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
 const seedWas = S.seed
 click('n')
-ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Unicorn Overlord'), 'restart returns to the title')
+ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Horns of Dominion'), 'restart returns to the title')
 ok(S.seed !== seedWas && location.hash === '#' + S.seed, 'restart rerolls the map and publishes the seed')
 
 console.log(fail ? '\nFAILURES' : '\nall good')

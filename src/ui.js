@@ -1,7 +1,7 @@
-import { S, T, WIN, NC, D } from './state.js'
+import { S, T, D } from './state.js'
 import { REALMS } from './map.js'
 import { mute, muted } from './audio.js'
-import { raise, fix, split, canRaise, canFix, canSplit, cnt, getArmy, seeCity } from './sim.js'
+import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), lg = $('log'), ov = $('ov'), ts = $('toast')
@@ -11,12 +11,9 @@ const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' dis
 
 export function ui () {
   if (S.over || !S.F.length) return
-  const F = S.F[S.me], n = cnt(S.me)
+  const F = S.F[S.me]
   set(hud, `<span style=color:${F.c}>${F.em} <b>${F.nm}</b></span>` +
     `<span>💎 <b>${F.g | 0}</b></span>` +
-    `<span>🏰 <b>${n}</b>/${NC}</span>` +
-    `<div class=bar><i style=width:${Math.min(100, n / WIN * 100)}%></i></div>` +
-    `<span style=opacity:.55>${S.F.map((f, i) => f.alive ? `<span style=color:${f.c}>${f.em}${cnt(i)}</span>` : '').join(' ')}</span>` +
     `<div class=sp><button data-a=q>${muted ? '🔇' : '🔊'}</button>` +
     `${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
@@ -30,9 +27,6 @@ export function ui () {
     const c = S.C[s.i], own = c.o === S.me, lit = seeCity(s.i)
     const q = '<span style=opacity:.45>???</span>'
     set(pan, `<h3>${lit && c.cap ? '👑' : '🏰'} ${c.nm}</h3>` +
-      row('Ruler', lit ? S.F[c.o].em + ' ' + S.F[c.o].nm : '🌫️ unknown') +
-      row('👥 Populace', lit ? c.p | 0 : q) +
-      row('🛡 Defenses', lit ? (c.s | 0) + ' / ' + c.m : q) +
       row('⚔️ Defense', lit ? c.d : q) +
       row('💎 Economy', lit ? c.e : q) +
       row('✊ Loyalty', lit ? (c.L[c.o] | 0) + '% · native ' + S.F[c.na].em : q) +
@@ -47,7 +41,7 @@ export function ui () {
           `${btn('f', s.i, canFix(s.i, S.me), c.rp
             ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
             : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
-        : `<div class=hint>${lit ? 'March a warband here to lay siege.' : '🌫️ Beyond your reach. Scout it with a warband.'}</div>`))
+        : ''))
     return
   }
 
@@ -75,12 +69,12 @@ function sync (a) {
 const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`
 
 export function title () {
-  ov.innerHTML = `<h1>🌈 Unicorn Overlord</h1>` +
-    `<p>The Rainbow Kingdom has ${NC} cities and no rightful ruler. Raise warbands, break walls, and take every last one.</p>` +
+  ov.innerHTML = `<h1>Horns of Dominion</h1>` +
+    `<p>Raise unicorn warbands and conquer the Rainbow Kingdom.</p>` +
     `<div class=diff>${D.map((d, i) =>
       `<button data-a=d data-i=${i} class="${S.diff === i ? 'on' : ''}">${d.nm}</button>`).join('')}</div>` +
     `<div class=realms>${REALMS.map(([nm, c, em], i) =>
-      `<div class=realm data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n style=color:${c}>${nm}</div><div class=c>realm ${i + 1}</div></div>`).join('')}</div>` +
+      `<div class=realm data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n style=color:${c}>${nm}</div></div>`).join('')}</div>` +
     `<p style=opacity:.4>space pauses · 1 2 3 set speed</p>`
 }
 
@@ -93,7 +87,7 @@ export function ending () {
     `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
     `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
     `<div><b>${t.most | 0}</b><span>🦄 largest host</span></div>` +
-    `</div><button data-a=n>🌈 New kingdom</button>`
+    `</div><button data-a=n>🌈 New story</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }
 

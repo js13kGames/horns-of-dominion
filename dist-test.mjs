@@ -30,7 +30,7 @@ ok(!html.includes('/*JS*/') && !html.includes('/*CSS*/'), 'no placeholders left 
 const js = html.split('<script>')[1].split('</script>')[0]
 new Function(js)()
 
-ok(/Unicorn Overlord/.test(els.ov.innerHTML), 'minified bundle boots to the title screen')
+ok(/Horns of Dominion/.test(els.ov.innerHTML), 'minified bundle boots to the title screen')
 const el = { dataset: { a: 's', i: '1' }, closest: () => el }
 win.h.click({ target: el })
 ok(els.ov.innerHTML === '', 'realm pick starts the game')
