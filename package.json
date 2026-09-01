@@ -9,6 +9,7 @@
     "size": "node build.mjs --quiet"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "roadroller": "^2.1.0"
   }
 }

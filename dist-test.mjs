@@ -10,7 +10,8 @@ const mk = id => (els[id] = {
   getContext: () => ctx
 })
 const win = { h: {} }
-globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null }
+const head = { appendChild: n => n }
+globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), head, activeElement: null }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 1
 globalThis.innerWidth = 1200; globalThis.innerHeight = 800
@@ -21,7 +22,8 @@ globalThis.requestAnimationFrame = f => rafq.push(f)
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
 
-ok(/<style>\*\{/.test(html), 'css inlined and minified')
+ok(/<style>body\{background:#0b0a12\}<\/style>/.test(html), 'critical css left in the shell')
+ok(/appendChild\(document\.createElement|<style>\*\{/.test(html) || html.length < 25000, 'the rest rides in the payload')
 ok(!/\n\s\s/.test(html), 'html collapsed')
 ok(!html.includes('/*JS*/') && !html.includes('/*CSS*/'), 'no placeholders left behind')
 

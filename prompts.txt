@@ -272,6 +272,13 @@ cmd-test gained eight assertions covering the ledger, the drift, the garrison ou
 # Round 12
 Add music 
 
+# Round 13
+Set up roadroller
+
+1. Change the cursor when clicking will issue a movement command, or pop a tooltip "Mobilize troop to XXX"
+2. It doesn't seem like we need to keep track to each individual faction, only loyalists to the faction that previously owned it; we could simplify it to a "loyalism" counter and a "priorFaction" attribute
+3. Loyalty is lost too fast, show be 10x slower 
+4. Both human and AI seem to be able to run away from combat without the penalty; the "turn back" implementation is weird.
 
 
 # Pending topics
