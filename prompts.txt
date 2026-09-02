@@ -272,14 +272,57 @@ cmd-test gained eight assertions covering the ledger, the drift, the garrison ou
 # Round 12
 Add music 
 
-# Round 13
+# Round 13 Optimize size
 Set up roadroller
-
 1. Change the cursor when clicking will issue a movement command, or pop a tooltip "Mobilize troop to XXX"
-2. It doesn't seem like we need to keep track to each individual faction, only loyalists to the faction that previously owned it; we could simplify it to a "loyalism" counter and a "priorFaction" attribute
-3. Loyalty is lost too fast, show be 10x slower 
-4. Both human and AI seem to be able to run away from combat without the penalty; the "turn back" implementation is weird.
+2. Both human and AI seem to be able to run away from combat without the penalty; the "turn back" implementation is weird.
 
+# Round 14
+1. Greatly simplify the loyalty system. Dont track per faction, just track a. the original faction and b. a civil unrest factor which starts at 0 in every city. Adapt the existing system and calculations to this new structure.
+- If a city is conquered by any faction other than the original faction, the civil unrest factor goes to 70 (unless already over 70).
+- While a city is in conquered status (i.e. it belongs to a faction different than the original):
+  - Civil unrest will increase naturally up to 100.
+  - If there are enemy troops stationed, civil unrest growth will be offset and may be negated or inverted, using the same calculations we have currently in place.
+  - The checks for changing civil unrest should happen 10x slower than they currently do for the allegiances.
+  - If civil unrest factor is over 90, there is a chance every X ticks of a rebellion, transfering the city back to the original faction.
+Simplify the loyalty display in the city panel, just show civil unrest %
+
+## Resolution
+
+Round 14 is done. The five-value loyalty ledger is gone; each city now carries na (native realm) and one number u.
+
+The system (src/sim.js step 5c, T in state.js)
+
+- u starts at 0 and is 0 whenever na holds the city.
+- Any other realm taking it sets u = max(u, 70) — a second captor never talks it down.
+- Checks run every T.slow = 10 ticks, the only non-per-tick step in tick(). Per check a conquered city gathers T.stir, and the occupier subtracts T.pace scaled by min(1, warriors / (pop × T.hold)) — the same garrison calculation as before, so a token warrior still pacifies nobody.
+- Past T.calm (75%) it won't conscript and flies ✊ on the map; past T.riot (90%) each check has a T.rise (5%) chance to hand it straight back to na — no mob, no siege, walls untouched.
+- The city panel now shows one row: ✊ Unrest 68%.
+
+Two things the measurements forced, beyond the spec
+
+1. Zombie realms. Revolts kept feeding a 2-city rump fresh cities so it never crumbled — one game ran 57,524 ticks. A realm at or below T.dying now rallies nobody: T.stir flips sign, its lost cities settle, and no revolt fires for it.
+2. T.calm had to move to 75. With seize at 70, a calm of 40 meant every conquered city refused to conscript, which throttled the endgame (seed 9000: p99 13,792, max 46,221, 3 games over 24k). At 75 a fresh conquest gets one draft in — the occupation timer runs 180 ticks, unrest crosses 75 at ~230 — then shuts unless you garrison. Swept 40/60/75/90; 75 was best.
+
+Balance, 400 games × 3 independent seed ranges, vs. HEAD on the same seeds:
+
+┌──────┬─────────────┬─────────────┬───────────────┬───────────────┐
+│ seed │     p50     │     p90     │      p99      │      max      │
+├──────┼─────────────┼─────────────┼───────────────┼───────────────┤
+│ 1000 │ 4345 → 4163 │ 7106 → 6455 │ 12734 → 12410 │ 17706 → 16145 │
+├──────┼─────────────┼─────────────┼───────────────┼───────────────┤
+│ 5000 │ 4297 → 4176 │ 7219 → 6408 │ 11808 → 10792 │ 14775 → 18042 │
+├──────┼─────────────┼─────────────┼───────────────┼───────────────┤
+│ 9000 │ 4231 → 3917 │ 7508 → 6079 │ 11257 → 8764  │ 23009 → 13963 │
+└──────┴─────────────┴─────────────┴───────────────┴───────────────┘
+
+0 stalemates and 0 games over 24k everywhere. Ladder still monotonic (0 / 20.5 / 42 / 61% vs HEAD's 0 / 22.5 / 43 / 65%).
+
+Size: 12,254 B → 12,103 B zipped (headroom 1,209 B) — 151 B saved, well outside the ±20 B Roadroller noise.
+
+Tests: cmd-test section 8 rewritten (26 assertions on seize, climb, garrison scaling, the slow clock, the raise gate, revolt, and the rump rule) — I mutation-checked three ways (no climb / no revolt / clobbering seize) and each breaks 2–5 assertions. dom-test gained three panel assertions. All of cmd/road/dom/dist/geo exit 0. Rendered a frame through shot.mjs with unrest forced to confirm the ✊ marker still draws.
+
+One thing I did not act on: win share across all 1200 games is realm 4 at 22.7% vs realm 2 at 17.6%, a wider spread than HEAD's. bias.mjs shows realm 4 genuinely starts ahead (4.07 cities, 34.6 econ, 13.3 degree vs realm 2's 3.98 / 33.7 / 12.95), and the direction is the same under HEAD — the unrest system amplifies existing map-generation bias rather than creating it. That's a map-gen issue, out of scope here.
 
 # Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace

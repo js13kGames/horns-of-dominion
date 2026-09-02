@@ -28,12 +28,12 @@ export function ui () {
     set(pan, `<h3>${lit && c.cap ? '👑' : '🏰'} ${c.nm}</h3>` +
       row('⚔️ Defense', lit ? c.d : q) +
       row('💎 Economy', lit ? c.e : q) +
-      row('✊ Loyalty', lit ? (c.L[c.o] | 0) + '% · native ' + S.F[c.na].em : q) +
+      row('✊ Unrest', lit ? (c.u | 0) + '%' : q) +
       (own
         ? `<div class=acts>${btn('r', s.i, canRaise(s.i, S.me), c.oc
             ? `🔒 Cowed — ${(c.oc / T.muster).toFixed(1)} musters`
-            : c.L[S.me] <= T.loyMin
-              ? `✊ Restless ${c.L[S.me] | 0}% — garrison ${Math.ceil(c.p * T.hold)}`
+            : c.u >= T.calm
+              ? `✊ Restless ${c.u | 0}% — garrison ${Math.ceil(c.p * T.hold)}`
               : c.mu
               ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
                 : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +

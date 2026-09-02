@@ -22,17 +22,18 @@ in the dark are not drawn at all — and neither are battles fought there: no cl
 markers, no capture flashes, no log entries for events beyond your reach. The AI plays
 with full information.
 
-**Loyalty.** Every city splits 100 points of loyalty across the five realms and
-remembers the realm it was drafted into as *native*, however often it changes hands. Left
-alone it wins loyalty back toward that native realm — the more of the map the native
-still holds, the harder it pulls, so a realm swept away stops rallying anyone. Whichever
-host stands in a city drags loyalty its own way instead, and faster — but only in
-proportion to the crowd it is sitting on, so holding a city down takes about a quarter of
-a warrior per head of populace, and a big rich city is harder to keep than a small one. A city under 60% loyal to whoever holds it will not
-conscript for them and flies ✊ on the map; an occupier who lets loyalty fall under 20%
-gets a rising — the city arms a host for the realm it does love, on the spot, and that
-host walks in through its own gates rather than laying siege. Hold a city thoroughly
-enough and it stops being anyone else's: it counts as native to you, and settles.
+**Civil unrest.** Every city remembers the realm it was drafted into as *native*, however
+often it changes hands, and carries one number — how badly its people want that realm
+back. It starts at nothing and stays there while the native realm holds the place. The
+moment anyone else takes the city it jumps to 70%, and from there it climbs on a slow
+clock, ten ticks between checks. Whoever holds it puts that down only in proportion to
+the crowd being sat on: holding a city takes about a quarter of a warrior per head of
+populace, so a big rich city is harder to keep than a small one, and a single warrior
+split off a host pacifies nobody. A city 40% restless will not conscript for whoever
+holds it and flies ✊ on the map; past 90% it may simply throw its occupier out on any
+check and go home — no mob, no siege, walls untouched. A realm ground down to a
+crumbling rump rallies nobody: its lost cities stop stirring and settle under their new
+owner, which is what lets a conquest finish.
 
 Hosts that meet on the same road stop and fight where they stand, and anyone else
 arriving on that road joins the melee. Sieges only start once the road is clear.
@@ -62,7 +63,7 @@ replays the exact same kingdom.
 |---|---|
 | `src/state.js` | shared state and the `T` table of every balance constant |
 | `src/map.js` | seeded 20-node planar graph, city stats, realm draft |
-| `src/sim.js` | one tick: income, movement, battle, siege, capture, loyalty, victory |
+| `src/sim.js` | one tick: income, movement, battle, siege, capture, unrest, victory |
 | `src/ai.js` | rule-based faction controller, one faction per tick |
 | `src/terrain.js` | the floating island: coastline, peaks, woods, keel — baked once |
 | `src/render.js` | canvas: backdrop, edges, cities, warbands, effects |
@@ -75,7 +76,7 @@ replays the exact same kingdom.
     node sim-test.mjs 5000     # ...on another seed range, to tell bias from noise
     node sim-test.mjs 1000 3   # ...with every realm on a given difficulty rung
     node road-test.mjs   # road-engagement mechanics, deterministic placements
-    node cmd-test.mjs    # flee cost, pathing, splitting, muster, roster, loyalty
+    node cmd-test.mjs    # flee cost, pathing, splitting, muster, roster, unrest
     node diff-test.mjs   # is the difficulty ladder monotonic? one rung vs four Duelists
     node bias.mjs        # starting-position parity across the five realm slots
     node dom-test.mjs    # drives the real modules against a stub browser

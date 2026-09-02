@@ -133,70 +133,104 @@ S.A = [put(991, 0, 300, foe, -1)]
 tick()
 ok(S.A[0].sg === foe && S.A[0].eg.length === 1, 'a siege records the city as the defender')
 
-// --- 8. loyalty: pull, drift, the raise gate, and a rising -----------------
+// --- 8. civil unrest: the seize, the climb, the garrison, the revolt -------
 fresh()
 const mine = S.C.findIndex(c => c.o === 0)
-ok(Math.abs(S.C[mine].L.reduce((x, y) => x + y, 0) - 100) < 1e-6, 'loyalty sums to 100')
+ok(S.C[mine].u === 0, 'a city starts with no unrest')
 ok(S.C[mine].na === S.C[mine].o, 'a city starts native to the realm that drafted it')
 
-// a garrison drags a city its way, and faster than the natives pull back
+// taking a city that is not yours seizes it at T.seize, and a later captor
+// never talks it down from something worse
 fresh()
-const theirs = S.C.findIndex(c => c.o !== 0)
-S.C[theirs].L = [50, 50, 0, 0, 0]; S.C[theirs].o = 1; S.C[theirs].na = 1
-S.A = []
-let was = S.C[theirs].L[0]
-for (n = 0; n < 40; n++) tick()
-ok(S.C[theirs].L[0] < was, 'with nobody standing there, loyalty drifts to the native realm')
-S.C[theirs].L = [50, 50, 0, 0, 0]
-S.A = [put(1001, 0, 200, theirs, -1)]
-was = S.C[theirs].L[0]
-for (n = 0; n < 40; n++) tick()
-ok(S.C[theirs].L[0] > was, 'a garrison outpulls the natives')
+let k = S.C.findIndex(c => c.o !== 0)
+S.C[k].s = 0.01; S.C[k].p = 200
+S.A = [put(1001, 0, 300, k, -1)]
+for (n = 0; n < 5 && S.C[k].o !== 0; n++) tick()
+ok(S.C[k].o === 0, 'the city falls')
+ok(S.C[k].u === T.seize, `and a foreign captor inherits ${T.seize}% unrest`)
+S.C[k].u = 95; S.C[k].s = 0.01; S.tick = 1
+const third = S.C[k].na === 3 ? 4 : 3
+S.A = [put(1002, third, 300, k, -1)]
+for (n = 0; n < 5 && S.C[k].o !== third; n++) tick()
+ok(S.C[k].o === third, 'a third realm takes it in turn')
+ok(S.C[k].u === 95, 'and a capture never talks unrest back down to the seize')
 
-// a garrison holds a city down in proportion to the crowd, not by merely being
-// present — otherwise one warrior split off a host pacifies as well as the host
-fresh()
-const pace = (w, pop) => {
-  const k = S.C.findIndex(c => c.o !== 0)
-  const nat = S.C[k].o
-  S.C[k].o = 0; S.C[k].na = nat; S.C[k].p = pop
-  S.C[k].L = [45, 0, 0, 0, 0]; S.C[k].L[nat] = 55
-  S.A = w ? [put(1000, 0, w, k, -1)] : []
-  for (n = 0; n < 400; n++) tick()
-  return S.C[k].L[0]
+// left alone a conquered city boils; a garrison in proportion to the crowd
+// puts it back down, and a token warrior split off a host does not
+const boil = (w, pop, from = T.seize, ticks = 400) => {
+  fresh()
+  const c = S.C.findIndex(x => x.o !== 0)
+  S.C[c].na = S.C[c].o; S.C[c].o = 0; S.C[c].p = pop; S.C[c].u = from
+  S.A = w ? [put(1000, 0, w, c, -1)] : []
+  for (let z = 0; z < ticks; z++) tick()
+  return S.C[c].u
 }
-const token = pace(1, 120), proper = pace(120 * T.hold, 120)
-ok(token < 45, `a single warrior cannot hold a city of 120 down (${token.toFixed(0)}%)`)
-ok(proper > 80, `${120 * T.hold} warriors can (${proper.toFixed(0)}%)`)
-ok(pace(30, 400) < pace(30, 100), 'the same garrison does less in a bigger city')
+const alone = boil(0, 120), token = boil(1, 120), proper = boil(120 * T.hold, 120)
+ok(alone > T.seize, `unheld, a conquered city stirs itself up (${alone | 0}%)`)
+ok(token > T.seize, `a single warrior cannot hold a city of 120 down (${token | 0}%)`)
+ok(proper < T.seize, `${120 * T.hold} warriors can (${proper | 0}%)`)
+ok(boil(30, 400) > boil(30, 100), 'the same garrison does less in a bigger city')
+ok(boil(200, 120, 5) === 0, 'and unrest never goes below nothing')
+
+// and it only moves on the slow clock, not every tick
+fresh()
+k = S.C.findIndex(c => c.o !== 0)
+S.C[k].na = S.C[k].o; S.C[k].o = 0; S.C[k].u = T.seize
+S.A = []
+S.tick = 0
+for (n = 0; n < T.slow - 1; n++) tick()
+ok(S.C[k].u === T.seize, `unrest sits still between checks, ${T.slow} ticks apart`)
+tick()
+ok(S.C[k].u > T.seize, 'and moves on the check itself')
+
+// a city held by the realm it was drafted into carries no unrest at all
+fresh()
+k = S.C.findIndex(c => c.o === 0)
+S.C[k].u = 90
+S.A = []
+for (n = 0; n <= T.slow; n++) tick()
+ok(S.C[k].u === 0, 'a city at home has nothing to resent')
 
 // the raise gate
 fresh()
 S.F[0].g = 999
 const home = S.C.findIndex(c => c.o === 0)
-S.C[home].L = [90, 10, 0, 0, 0]
-ok(canRaise(home, 0), 'a loyal city conscripts')
-S.C[home].L = [T.loyMin - 5, 100 - T.loyMin + 5, 0, 0, 0]
-ok(!canRaise(home, 0), `a city under ${T.loyMin}% loyal refuses`)
+ok(canRaise(home, 0), 'a settled city conscripts')
+S.C[home].u = T.calm
+ok(!canRaise(home, 0), `a city ${T.calm}% restless refuses`)
 ok(!raise(home, 0), 'and the order is rejected outright')
 
-// a rising: the mob takes up arms for whoever it does love, and walks in
+// the revolt: past T.riot the city simply goes home, walls and all
 fresh()
 const held = S.C.findIndex(c => c.o !== 0)
-const nat = S.C[held].o
-S.C[held].o = 0                                  // I hold it, they do not love me
-S.C[held].na = nat
-S.C[held].L = [T.revolt - 5, 0, 0, 0, 0]
-S.C[held].L[nat] = 100 - (T.revolt - 5)
-S.C[held].p = 200; S.C[held].s = S.C[held].m; S.C[held].rv = 0
+const owner = S.C[held].o
+S.C[held].o = 0                                  // I hold it, its people want out
+S.C[held].u = T.riot + 5
+S.C[held].p = 200; S.C[held].s = S.C[held].m; S.C[held].mu = 1e5
 S.A = []
-for (n = 0; n < 6 && !S.A.length; n++) tick()
-ok(S.A.length === 1 && S.A[0].o === nat, 'a despised city rises for the realm it loves')
-ok(S.A[0].rb, 'the rising is marked to walk in rather than lay siege')
-const wall = S.C[held].s
-for (n = 0; n < 6 && S.C[held].o === 0; n++) tick()
-ok(S.C[held].o === nat, 'and it takes the city back')
-ok(wall > 1, `without a siege — walls were still standing at ${wall.toFixed(0)}`)
+for (n = 0; n < 4000 && S.C[held].o === 0; n++) tick()
+ok(S.C[held].o === owner, `a city past ${T.riot}% throws its occupier out`)
+ok(!S.A.length, 'no mob is raised — the city simply changes hands')
+ok(S.C[held].s === S.C[held].m, 'and its walls are never breached')
+ok(!S.C[held].u && !S.C[held].mu, 'it settles, and the half-raised host scatters')
+
+// a revolt needs a realm worth rallying to: a crumbling rump inspires nobody,
+// or revolts would keep handing it cities and no conquest could ever finish
+const rump = left => {
+  fresh()
+  const c = S.C.findIndex(x => x.o !== 0)
+  const realm = S.C[c].o
+  S.C[c].o = 0; S.C[c].u = 100                     // I hold one of its cities
+  let n = 0
+  S.C.forEach(x => { if (x.o === realm && ++n > left) x.o = 0 })
+  S.A = []
+  for (let z = 0; z < 1200; z++) tick()
+  return S.C[c]
+}
+const gone = rump(0), rest = rump(T.dying), live = rump(T.dying + 1)
+ok(gone.o === 0 && gone.u < 100, 'a city whose realm holds nothing settles instead')
+ok(rest.o === 0 && rest.u < 100, `a realm down to ${T.dying} cities rallies nobody either`)
+ok(live.o === live.na, `one still holding ${T.dying + 1} takes its city back`)
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

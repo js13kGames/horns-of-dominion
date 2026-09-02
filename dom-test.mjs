@@ -294,6 +294,15 @@ click('r', prey)
 ok(S.A.length === before7 && !S.C[prey].mu, 'and raising is refused there')
 S.A = []; S.fx = []; S.toast = ''
 
+// --- the panel reports unrest, and only unrest ------------------------------
+ok(S.C[prey].u > 0 && els.pan.innerHTML.includes('✊ Unrest</span><span>' + (S.C[prey].u | 0) + '%'),
+  `the panel reports the seized city's unrest (${S.C[prey].u | 0}%)`)
+ok(!/Loyalty|native|Ionian|Restless/.test(els.pan.innerHTML),
+  'and no per-realm loyalty ledger')
+S.C[prey].oc = 0; S.C[prey].u = 95; step(1)
+ok(/Restless 95%/.test(els.pan.innerHTML), 'a restless city says so instead of offering Raise')
+S.C[prey].u = 0
+
 // run to a conclusion
 S.speed = 8
 for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)

@@ -51,13 +51,15 @@ export const T = {
   rot: 0.5 * P,     // wall points its holdings shed per tick while crumbling
   starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
   escal: 5000 / P,  // sieges grind faster every this many ticks
-  loy: 0.5 * P,     // loyalty a city wins back toward its native realm, per tick
-  pace: 4 * P,      // loyalty a garrison pulls its own way — it must beat `loy`
-  hold: 0.25,       // warriors per head of populace for a garrison to pull at full weight
-  seize: 45,        // loyalty the captor is granted the moment a city falls
-  loyMin: 60,       // below this a city will not conscript for whoever holds it
-  revolt: 20,       // an occupier this unloved gets a rising
-  assim: 80         // held this thoroughly, a city counts as native-born
+  slow: 10,         // ticks between unrest checks — it is a slow-burning thing
+  stir: 2.2 * P,    // unrest a conquered city gathers per check, at full strength
+  pace: 8 * P,      // unrest a garrison puts down per check — it must beat `stir`
+  hold: 0.25,       // warriors per head of populace for a garrison at full weight
+  seize: 70,        // unrest the moment a city falls to anyone but its own realm
+  calm: 75,         // above this a city will not conscript for whoever holds it —
+                    // a fresh conquest gets one draft in before it stews past this
+  riot: 90,         // above this the city may throw its occupier out
+  rise: 0.05        // chance of it doing so, per check
 }
 
 // --- difficulty: AI-only multipliers on economy, decisions, army cap, occupation ---

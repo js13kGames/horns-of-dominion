@@ -37,7 +37,7 @@ Historical warning: `advzip`/`ect` used to be shelled out to inside a bare `catc
 
 There is no test runner. Each harness is a standalone `.mjs` that imports the real `src/` modules, prints `ok`/`FAIL` lines, and exits non-zero. Run one directly:
 
-    node cmd-test.mjs     # flee cost, pathing, splitting, muster, engagement bookkeeping, loyalty
+    node cmd-test.mjs     # flee cost, pathing, splitting, muster, engagement bookkeeping, civil unrest
     node road-test.mjs    # road engagements, deterministic army placements, no AI
     node dom-test.mjs     # drives the real modules against a stub browser
     node dist-test.mjs    # boots the shipped, packed dist/index.html
@@ -61,11 +61,11 @@ Balance harnesses (slow, minutes):
 
 ### The tick, and what scales with what
 
-`src/state.js` opens with `const P = 0.1` — the global pace knob. It multiplies every **rate** (gold, growth, march speed, attrition, siege, mending, loyalty drift, AI cadence) and leaves every **quantity** alone (costs, warriors, wall points). Tick-denominated thresholds are written `x / P`. Change `P` and the whole game speeds up or slows down without a single balance ratio shifting.
+`src/state.js` opens with `const P = 0.1` — the global pace knob. It multiplies every **rate** (gold, growth, march speed, attrition, siege, mending, unrest, AI cadence) and leaves every **quantity** alone (costs, warriors, wall points). Tick-denominated thresholds are written `x / P`. Change `P` and the whole game speeds up or slows down without a single balance ratio shifting.
 
 `T` in `state.js` is the single balance surface — every tunable lives there, nowhere else. `D` is the four-rung difficulty table; its multipliers apply to AI factions only, the player is always `D[1]`.
 
-The loop is fixed-timestep: `main.js` accumulates real time, runs `tick()` + `ai()` at 0.5 s per tick scaled by `S.speed`, and renders every frame with `S.alpha` interpolation. `src/sim.js` `tick()` is one ordered pass — income, road battles and movement, stack merging, node battles, sieges and capture, loyalty, repairs, crumbling realms, notifications, victory. Order matters; the numbered comments in `tick()` are load-bearing.
+The loop is fixed-timestep: `main.js` accumulates real time, runs `tick()` + `ai()` at 0.5 s per tick scaled by `S.speed`, and renders every frame with `S.alpha` interpolation. `src/sim.js` `tick()` is one ordered pass — income, road battles and movement, stack merging, node battles, sieges and capture, civil unrest, repairs, crumbling realms, notifications, victory. Order matters; the numbered comments in `tick()` are load-bearing.
 
 ### Derived state, not stored state
 
@@ -91,9 +91,13 @@ Terrain runs **its own RNG**, seeded off `S.seed`. It must never draw from `stat
 
 The coastline traces the convex hull of the cities (a ray hits the hull at `min(support(φ)/cos(θ−φ))` over the sampled supporting lines), leaning partway back toward the raw support so it doesn't come out a rectangle. The skirt on top is floored — cities sit *on* the hull, so a negative margin would leave one standing in the sea. The rock underside is seven copies of that same coastline, scaled about the centroid and stacked downward; the jagged coast is what makes them read as strata.
 
-### Loyalty
+### Civil unrest
 
-Each city carries `L` — 5 loyalty values summing to 100 — plus `na`, the native realm from the initial draft. One helper (`shift`) moves points onto a faction proportionally from the others, so the ledger never needs renormalising. Per tick: the garrison pulls toward its owner *scaled by strength against population* (`min(1, warriors / (pop × T.hold))` — without that scaling one warrior held a city as well as two hundred, and splitting one off costs nothing), the native realm pulls back *scaled by how much of the map it still holds* (without that, a rising hands a dead realm an army, the army keeps it flagged alive, and its cities rise forever), high loyalty flips `na` to the owner, and low loyalty triggers a rising whose host is flagged `rb` to walk in without a siege.
+Each city carries one number, `u` (0–100), plus `na`, the realm it was drafted into. `u` is nothing at all while `na` holds the city; the moment anyone else takes it, `u` jumps to `T.seize` (never downward — a second captor inherits whatever the first earned). It then moves on its own slow clock, `T.slow` ticks apart, which is the only place in `tick()` that is not per-tick.
+
+Per check, a conquered city gathers `T.stir` and its occupier puts down `T.pace` *scaled by strength against population* (`min(1, warriors / (pop × T.hold))` — without that scaling one warrior held a city as well as two hundred, and splitting one off cost nothing). Past `T.calm` the city will not conscript and flies ✊; past `T.riot` it may `revolt()` on any check, which simply hands the city back to `na` at full walls — no mob, no siege, no army spawned.
+
+The sign of `T.stir` is load-bearing: a native realm down to `T.dying` cities or fewer *rallies nobody*, so its lost cities calm instead of stirring and no revolt fires for it. Without that, revolts keep handing a crumbling rump fresh cities, it never falls below `T.dying`, and the game will not end — that showed up as a single 57k-tick game in a 400-game run while the p50 barely moved.
 
 ### Audio
 
