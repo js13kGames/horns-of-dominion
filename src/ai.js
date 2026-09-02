@@ -1,8 +1,8 @@
 import { S, T } from './state.js'
-import { raise, fix, order, canRaise, canFix } from './sim.js'
+import { raise, fix, order, canRaise, canFix, pw } from './sim.js'
 
-const force = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o !== f ? a.w : 0), 0)
-const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o === f ? a.w : 0), 0)
+const force = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o !== f ? pw(a) : 0), 0)
+const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o === f ? pw(a) : 0), 0)
 
 // one faction acts per turn, round-robin. how many decisions it gets on that
 // turn is what difficulty buys — along with gold and a bigger standing army.
@@ -23,15 +23,20 @@ function step (f, F) {
   if (!mine.length) return
 
   // muster — bounded, and never at the expense of marching
-  const host = S.A.reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
+  const host = S.A.reduce((n, a) => n + (a.o === f ? pw(a) : 0), 0)
   // the cap lifts as the war drags on, so a faction that has won the economy can
   // eventually field a host big enough to actually finish — no eternal see-saw
-  if (F.g > T.raiseG * T.aiHoard &&
+  if (F.g > T.K[0][3] * T.aiHoard &&
       host < mine.length * T.aiCap * F.dm.cap * (1 + S.tick / T.escal)) {
     const safe = mine.filter(i => !S.C[i].n.some(j => force(j, f) > 0))
-    const pool = (safe.length ? safe : mine)
-      .sort((a, b) => S.C[b].p - S.C[a].p).find(i => canRaise(i, f))
-    if (pool !== undefined) raise(pool, f)
+    // only a specialist that batters walls at least as well as a rider is worth
+    // it here: this AI scores targets by adjacency and never once reads T.speed,
+    // so it cannot cash in a flyer's speed, and a host that will not siege drifts
+    // between friendly cities burning the one march order a turn buys
+    const want = i => S.C[i].sp && T.K[S.C[i].sp][1] >= 1 ? S.C[i].sp : 0
+    const pool = (safe.length ? safe : mine).sort((a, b) => S.C[b].p - S.C[a].p)
+      .find(i => canRaise(i, f, want(i)) || canRaise(i, f))
+    if (pool !== undefined) raise(pool, f, canRaise(pool, f, want(pool)) ? want(pool) : 0)
   }
 
   const idle = S.A.filter(a => a.o === f && a.t < 0)
@@ -39,7 +44,7 @@ function step (f, F) {
   // one march order per turn: relieve a siege first
   const hit = mine.find(i => force(i, f) > 0)
   if (hit !== undefined) {
-    const help = idle.find(a => a.a !== hit && S.C[a.a].n.includes(hit) && a.w > force(hit, f) * 0.8)
+    const help = idle.find(a => a.a !== hit && S.C[a.a].n.includes(hit) && pw(a) > force(hit, f) * 0.8)
     if (help) { order(help, hit); return }
   }
 
@@ -56,7 +61,7 @@ function step (f, F) {
         if (force(j, f) > 0) s += 6
       } else {
         // enough to beat the field force and crack the walls before bleeding out
-        if (a.w * bold < e * 1.3 + 1.6 * Math.sqrt(c.d * Math.max(c.s, 1))) continue
+        if (pw(a) * bold < e * 1.3 + 1.6 * Math.sqrt(c.d * Math.max(c.s, 1)) / T.K[a.k][1]) continue
         s = 4 + c.e * 0.5 + c.p / 60 - c.d * 0.3 - c.s / 25 - e / 30
         if (c.cap) s += 2
       }
@@ -69,5 +74,5 @@ function step (f, F) {
   const weak = mine
     .filter(i => S.C[i].s < S.C[i].m * 0.7 && S.C[i].n.some(j => S.C[j].o !== f))
     .sort((x, y) => S.C[x].s / S.C[x].m - S.C[y].s / S.C[y].m)[0]
-  if (weak !== undefined && F.g > T.raiseG * 2 && canFix(weak, f)) fix(weak, f)
+  if (weak !== undefined && F.g > T.K[0][3] * 2 && canFix(weak, f)) fix(weak, f)
 }

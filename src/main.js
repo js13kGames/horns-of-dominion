@@ -49,11 +49,12 @@ function frame (ts) {
 cv.addEventListener('pointerdown', e => {
   if (!playing || S.over) return
   const p = toWorld(e.clientX, e.clientY)
-  let ha = null                       // hit-test what the player sees, not the logical spot
-  for (const a of S.A) {
-    if (!seeArmy(a)) continue                     // cannot click what you cannot see
-    if (Math.hypot(a.rx - p.x, a.ry - p.y) < 15) { ha = a; break }
-  }
+  // hit-test what the player sees, not the logical spot. kinds refuse to merge,
+  // so a node can hold three of your hosts closer together than they are wide —
+  // clicking again walks to the next one rather than sticking on the first
+  const near = S.A.filter(a => seeArmy(a) && Math.hypot(a.rx - p.x, a.ry - p.y) < 15)
+  const cur = near.findIndex(a => S.sel && S.sel.k === 'a' && S.sel.i === a.id)
+  const ha = near.length ? near[(cur + 1) % near.length] : null
   let hc = -1
   for (let i = 0; i < S.C.length; i++) {
     const c = S.C[i]

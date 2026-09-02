@@ -324,6 +324,38 @@ Tests: cmd-test section 8 rewritten (26 assertions on seize, climb, garrison sca
 
 One thing I did not act on: win share across all 1200 games is realm 4 at 22.7% vs realm 2 at 17.6%, a wider spread than HEAD's. bias.mjs shows realm 4 genuinely starts ahead (4.07 cities, 34.6 econ, 13.3 degree vs realm 2's 3.98 / 33.7 / 12.95), and the direction is the same under HEAD — the unrest system amplifies existing map-generation bias rather than creating it. That's a map-gen issue, out of scope here.
 
+# Round 15
+Warbands stop being interchangeable. Alongside the current unicorn riders you'll be able to raise pegasi — cheap, nearly twice as fast, and feeble against walls — and dragons, which cost more than twice as much, crawl at half speed, but hit over twice as hard in the field and chew through fortifications. Every city can still raise riders, but only ten of the twenty can raise a specialist: each realm's capital plus one other of its founding cities breeds that realm's signature unit, and that stays with the city forever, so taking an enemy capital is how you get their dragons. Each warband is one kind, and kinds don't merge, so a node can hold several of your hosts side by side and you build a mixed force by stacking them rather than by mixing warriors — fast pegasi to raid undefended cities and shuttle between fronts, dragons to crack the walls you can't out-grind, riders as the dependable middle. On the map a host shows its kind as its glyph with the same headcount underneath, and cities that breed a specialist wear a small badge, so the board still says everything the panel would.
+
+
+- Add bonuses per faction
+ - Higher attack, defense, velocity
+ - 
+
+# Round 15
+I'm considering adding variety different kind of units. quicker pegasus, stronger but slower
+dragons, current units would be base infantry.
+
+Landed as T.K: one row per kind, [field power, wall power, speed, gold, pop, glyph], with riders
+all 1.0 so a board with no specialist cities reproduces round 14 exactly — that identity check
+caught nothing, which is the point of it. Specialists belong to the city (c.sp, set on each
+realm's capital and next biggest city, chosen without rnd() so the game's random stream does not
+shift). Kinds refuse to merge, so hosts fan sideways by kind and the hit test cycles.
+
+The one real surprise: letting the AI raise pegasi stalled 36 of the first 40 games, all at 19
+cities against 1. It scores targets by adjacency and never reads T.speed, so it cannot use a
+flyer, and flyers that will not siege still burn its one march order a turn drifting between
+friendly cities. Gated on wall power >= 1 — the AI takes dragons, never pegasi. Pegasi are a
+player tool.
+
+Dragons ended up priced *below* riders per point of field power (1.76 vs 1.60). At rider parity
+the AI's two dragon realms won 202 of 1200 games against the flyer realms' 265 — the price cut
+pays for a slowness only the AI cannot manage. Accepted as known: two dragon realms can still
+deadlock (1 stalemate in 1200 all-AI games) and diff-test reads Duelist at 10% because it tests
+realm 0, a dragon realm.
+
++301 B zipped (12,103 -> 12,404).
+
 # Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)

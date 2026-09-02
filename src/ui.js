@@ -36,7 +36,9 @@ export function ui () {
               ? `✊ Restless ${c.u | 0}% — garrison ${Math.ceil(c.p * T.hold)}`
               : c.mu
               ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
-                : `🦄 Raise ${T.raiseW} — 💎${T.raiseG} 👥${T.raiseP}`)}` +
+                : `${T.K[0][5]} Raise ${T.raiseW} — 💎${T.K[0][3]} 👥${T.K[0][4]}`)}` +
+          `${c.sp ? btn('g', s.i, canRaise(s.i, S.me, c.sp),
+            `${T.K[c.sp][5]} Raise ${T.raiseW} — 💎${T.K[c.sp][3]} 👥${T.K[c.sp][4]}`) : ''}` +
           `${btn('f', s.i, canFix(s.i, S.me), c.rp
             ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
             : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
@@ -102,6 +104,7 @@ addEventListener('click', e => {
   if (!el) return
   const a = el.dataset.a, i = +el.dataset.i
   if (a === 'r') raise(i, S.me)
+  else if (a === 'g') raise(i, S.me, S.C[i].sp)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
   else if (a === 'f') fix(i, S.me)
   else if (a === 'q') mute()

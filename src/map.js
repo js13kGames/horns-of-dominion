@@ -103,7 +103,7 @@ export function genMap (sd) {
     c.e = ri(3, 12)
     c.m = ri(20, 80)
     c.s = c.m
-    c.mu = c.rp = c.oc = 0   // mustering, walls owed, occupation
+    c.mu = c.rp = c.oc = c.mk = c.sp = 0   // mustering (and its kind), walls owed, occupation, specialist
   }
 
   // five capitals, as far apart as the graph allows
@@ -157,6 +157,17 @@ export function genMap (sd) {
   // every city remembers the realm it was drafted into, however often it
   // changes hands, and resents anyone else holding it
   C.forEach(c => { c.na = c.o; c.u = 0 })
+
+  // each realm breeds one specialist kind, at its capital and at its next
+  // biggest city. it belongs to the place, not the owner: take the capital and
+  // you take the dragonpens with it. chosen without rnd() on purpose — spending
+  // randomness here would shift the whole game's stream and every balance number
+  caps.forEach((k, f) => {
+    C[k].sp = T.sp[f]
+    let b = -1
+    for (let i = 0; i < NC; i++) if (C[i].o === f && i !== k && (b < 0 || C[i].p > C[b].p)) b = i
+    if (b >= 0) C[b].sp = T.sp[f]
+  })
 
   S.F = REALMS.map(([nm, c, em], i) => ({ nm, c, em, ai: i !== S.me, g: 60, alive: 1 }))
   S.stat = { took: 0, lost: 0, slain: 0, most: 0 }

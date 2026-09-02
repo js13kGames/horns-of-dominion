@@ -26,7 +26,7 @@ globalThis.addEventListener = (t, f) => { win.h[t] = f }
 let rafq = []
 globalThis.requestAnimationFrame = f => rafq.push(f)
 
-const { S } = await import('./src/state.js')
+const { S, T } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
 await import('./src/main.js')
 
@@ -103,6 +103,31 @@ ok(S.A.length === n0 + 1, 'the warband appears once mustered')
 const army = S.A[S.A.length - 1]
 ok(army.o === 2 && army.a === mine, 'warband belongs to me, at my city')
 
+// --- the specialist button ---------------------------------------------------
+// a plain city offers riders only; a city that breeds something offers both
+const plain = S.C.findIndex(c => c.o === 2 && !c.sp)
+S.sel = { k: 'c', i: plain }; step(1)
+ok(!/data-a=g/.test(els.pan.innerHTML), 'a plain city offers no specialist')
+const bred = S.C.findIndex(c => c.o === 2 && c.sp)
+const kind = S.C[bred].sp
+S.C[bred].p = 200; S.C[bred].oc = 0; S.C[bred].u = 0; S.C[bred].mu = 0
+S.sel = { k: 'c', i: bred }; step(1)
+ok(/data-a=g/.test(els.pan.innerHTML), 'a breeding city offers a second Raise')
+ok(els.pan.innerHTML.includes(T.K[kind][5]), `labelled with its own glyph (${T.K[kind][5]})`)
+ok(els.pan.innerHTML.includes('💎' + T.K[kind][3]), `and its own price (💎${T.K[kind][3]})`)
+const seen = S.A.map(a => a.id)
+click('g', bred)
+ok(S.C[bred].mu > 0 && S.C[bred].mk === kind, 'clicking it musters that kind')
+// other realms are mustering too, so look for *my* new host at *that* city
+const born = () => S.A.find(a => !seen.includes(a.id) && a.o === S.me && a.a === bred)
+S.speed = 8
+for (let k = 0; k < 400 && !born(); k++) step(1)
+S.speed = 1
+const got = born()
+ok(!!got, 'and the warband arrives')
+ok(got && got.k === kind, 'as the kind the city breeds')
+S.A = S.A.filter(a => seen.includes(a.id)); S.sel = null
+
 // picking a host up is what puts it under command — the map is its order sheet
 step(1)
 tap(army.rx, army.ry)
@@ -177,7 +202,7 @@ const far = (() => {                       // a city three hops from home
   for (let h = 0; h < q.length; h++) for (const v of S.C[q[h]].n) if (d[v] < 0) { d[v] = d[q[h]] + 1; q.push(v) }
   return d.findIndex(x => x === 3)
 })()
-S.A = [{ id: 5001, o: 2, w: 120, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
+S.A = [{ id: 5001, o: 2, w: 120, k: 0, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
 const h = S.A[0]
 step(2)
 tap(h.rx, h.ry)
@@ -197,8 +222,8 @@ ok(h.dst === far && h.t >= 0, 'and keeps heading for it leg by leg')
 
 // a fight the player is inside
 S.A = [
-  { id: 5002, o: 2, w: 100, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 },
-  { id: 5003, o: 3, w: 100, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
+  { id: 5002, o: 2, w: 100, k: 0, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 },
+  { id: 5003, o: 3, w: 100, k: 0, a: home, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
 ]
 S.speed = 4
 step(20)
@@ -228,7 +253,7 @@ S.sel = { k: 'c', i: near }; step(1)
 ok(!/\?\?\?/.test(els.pan.innerHTML), 'a city bordering mine reports its numbers')
 
 // scouting is live: present a host, the fog lifts; withdraw, it closes
-const scout = { id: 6001, o: 2, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
+const scout = { id: 6001, o: 2, w: 50, k: 0, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
 S.A = [scout]
 S.sel = { k: 'c', i: dark }; step(2)
 ok(!/\?\?\?/.test(els.pan.innerHTML), 'a warband standing there lifts the fog')
@@ -236,7 +261,7 @@ S.A = []; step(2)
 ok(/\?\?\?/.test(els.pan.innerHTML), 'and the fog closes again when it withdraws')
 
 // hosts inside the fog are neither drawn nor clickable
-S.A = [{ id: 6002, o: 3, w: 50, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
+S.A = [{ id: 6002, o: 3, w: 50, k: 0, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
 S.sel = null; step(2)
 tap(S.A[0].rx, S.A[0].ry)
 ok(!S.sel, 'an enemy host in the fog cannot be selected')
@@ -244,7 +269,7 @@ S.A = []; S.speed = 1
 
 // --- fog hides events, not just terrain -----------------------------------
 const ticks = n => { S.speed = 8; for (let k = 0; k < n; k++) step(1, 100); S.speed = 1 }
-const host = (id, o, at) => ({ id, o, w: 120, a: at, t: -1, pr: 0, st: 0, dst: -1, hold: 0 })
+const host = (id, o, at, k = 0) => ({ id, o, w: 120, k, a: at, t: -1, pr: 0, st: 0, dst: -1, hold: 0 })
 
 // effects decay within a few frames, so sample every frame rather than at the end
 const watch = (at, n) => {

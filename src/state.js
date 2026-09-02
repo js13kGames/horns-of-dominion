@@ -23,9 +23,7 @@ const P = 0.1
 export const T = {
   inc: 0.05 * P,    // gold per econ point per tick
   grow: 0.004 * P,  // pop regrowth rate toward cap
-  raiseG: 25,       // gold to raise an army
-  raiseP: 40,       // population consumed
-  raiseW: 40,       // warriors produced
+  raiseW: 40,       // warriors produced — every kind musters the same bodies
   minPop: 55,       // pop floor to allow raising
   repair: 2,        // gold per point of wall repaired
   repairStep: 10,   // points per repair order
@@ -42,7 +40,7 @@ export const T = {
   mend: 0.15 * P,   // passive wall regen per tick
   flee: 0.25,       // share of a host lost when it breaks contact
   odds: 0.7,        // a host disengages below this share of the enemy's strength
-  aiHoard: 1.5,     // AI raises once gold > raiseG * aiHoard
+  aiHoard: 1.5,     // AI raises once gold > a rider's price * aiHoard
   aiEvery: 1 / P,   // ticks between AI turns — scales with pace, or the AI
                     // would get ten times as many decisions per unit of war
   aiCap: 55,        // AI stops mustering above this many warriors per city held
@@ -59,7 +57,18 @@ export const T = {
   calm: 75,         // above this a city will not conscript for whoever holds it —
                     // a fresh conquest gets one draft in before it stews past this
   riot: 90,         // above this the city may throw its occupier out
-  rise: 0.05        // chance of it doing so, per check
+  rise: 0.05,       // chance of it doing so, per check
+  // the three kinds of warband. positional, not named: esbuild does not mangle
+  // property names, so `K[k][0]` ships one character where `K[k].pow` ships four
+  // at every read site. rider is all 1.0 and priced as an army always was, so a
+  // board with no specialist cities behaves numerically exactly like the old game.
+  //   [field power, wall power, march speed, gold, pop, glyph]
+  // dragons are priced *below* riders per point of field power (1.76 to 1.60).
+  // that pays for a drawback the AI cannot manage: it scores targets by adjacency
+  // and never reads T.speed, so a slow host is pure cost to it. At rider parity
+  // its two dragon realms won 202 of 1200 games against the flyer realms' 265.
+  K: [[1, 1, 1, 25, 40, '🦄'], [0.6, 0.2, 1.9, 35, 30, '🕊'], [2.2, 2.5, 0.55, 50, 45, '🐉']],
+  sp: [2, 1, 2, 1, 1] // the specialist each realm breeds, at its capital and one other city
 }
 
 // --- difficulty: AI-only multipliers on economy, decisions, army cap, occupation ---

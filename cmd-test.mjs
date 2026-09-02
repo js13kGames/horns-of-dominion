@@ -6,7 +6,7 @@ import { tick, order, split, raise, canRaise, hop, getArmy } from './src/sim.js'
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
 const fresh = (ai = 0) => { genMap(7); S.me = 0; S.F.forEach(f => { f.ai = ai }); S.A = [] }
-const put = (id, o, w, a, t) => ({ id, o, w, a, t, pr: 0, st: 0, dst: -1, hold: 0 })
+const put = (id, o, w, a, t, k = 0) => ({ id, o, w, k, a, t, pr: 0, st: 0, dst: -1, hold: 0 })
 const longRoad = () => S.E.slice().sort((a, b) =>
   dist(S.C[b[0]], S.C[b[1]]) - dist(S.C[a[0]], S.C[a[1]]))[0]
 const hopsAway = (from, n) => {          // a node exactly n hops from `from`
@@ -231,6 +231,109 @@ const gone = rump(0), rest = rump(T.dying), live = rump(T.dying + 1)
 ok(gone.o === 0 && gone.u < 100, 'a city whose realm holds nothing settles instead')
 ok(rest.o === 0 && rest.u < 100, `a realm down to ${T.dying} cities rallies nobody either`)
 ok(live.o === live.na, `one still holding ${T.dying + 1} takes its city back`)
+
+// --- 9. three kinds of warband ---------------------------------------------
+// the map hands out specialists by realm, at the capital and one other city
+fresh()
+ok(S.C.filter(c => c.sp).length === 10, 'ten of the twenty cities breed a specialist')
+ok(S.C.filter(c => c.cap && c.sp).length === 5, 'every capital among them')
+ok(S.C.every(c => !c.sp || c.sp === T.sp[c.na]), 'and each breeds what its own realm rides')
+ok(new Set(S.C.filter(c => c.sp).map(c => c.na)).size === 5, 'two apiece, one realm each')
+
+// speed: the table says 1.9x and 0.55x, and the road agrees
+const crossing = k => {
+  fresh()
+  const [u, v] = longRoad()
+  S.A = [put(1101, 0, 40, u, v, k)]
+  let z = 0
+  for (; z < 4000 && S.A[0].t >= 0; z++) tick()
+  return z
+}
+const cR = crossing(0), cP = crossing(1), cD = crossing(2)
+ok(cP < cR && cR < cD, `pegasi outpace riders outpace dragons (${cP}/${cR}/${cD} ticks)`)
+ok(Math.abs(cR / cP - T.K[1][2]) < 0.15, `the gap tracks the table (${(cR / cP).toFixed(2)}x vs ${T.K[1][2]}x)`)
+ok(Math.abs(cD / cR - 1 / T.K[2][2]) < 0.15, `at both ends (${(cD / cR).toFixed(2)}x vs ${(1 / T.K[2][2]).toFixed(2)}x)`)
+
+// field power: equal numbers, unequal fight
+fresh()
+;[i, j] = longRoad()
+S.A = [put(1111, 0, 100, i, j, 2), put(1112, 1, 100, j, i, 0)]
+for (n = 0; n < 6000 && S.A.length === 2; n++) tick()
+ok(S.A.length === 1 && S.A[0].o === 0, 'a hundred dragons break a hundred riders')
+fresh()
+;[i, j] = longRoad()
+S.A = [put(1113, 0, 100, i, j, 1), put(1114, 1, 100, j, i, 0)]
+for (n = 0; n < 6000 && S.A.length === 2; n++) tick()
+ok(S.A.length === 1 && S.A[0].o === 1, 'and a hundred pegasi lose to them')
+
+// wall power: the same hundred warriors, three very different sieges
+const breach = k => {
+  fresh()
+  const c = S.C.findIndex(x => x.o !== 0)
+  S.C[c].s = S.C[c].m
+  S.A = [put(1121, 0, 100, c, -1, k)]
+  let z = 0
+  for (; z < 20000 && S.C[c].o !== 0; z++) tick()
+  return z
+}
+const bD = breach(2), bR = breach(0), bP = breach(1)
+ok(bD < bR && bR < bP, `dragons breach fastest, pegasi slowest (${bD}/${bR}/${bP} ticks)`)
+ok(bP > bR * 2, 'pegasi are no siege engine at all')
+
+// kinds keep their own company
+fresh()
+k = S.C.findIndex(c => c.o === 0)
+S.A = [put(1131, 0, 50, k, -1, 0), put(1132, 0, 50, k, -1, 2)]
+tick()
+ok(S.A.length === 2, 'riders and dragons sharing a city do not pool')
+S.A = [put(1133, 0, 50, k, -1, 2), put(1134, 0, 50, k, -1, 2)]
+tick()
+ok(S.A.length === 1 && S.A[0].w === 100, 'two dragon warbands do')
+S.A = [put(1135, 0, 90, k, -1, 2)]
+split(S.A[0], 30)
+ok(S.A.length === 2 && S.A.every(a => a.k === 2), 'and splitting dragons yields dragons')
+
+// the raise gate: riders anywhere, the specialist only where it is bred
+fresh()
+S.F[0].g = 999
+const plain = S.C.findIndex(c => c.o === 0 && !c.sp && c.p >= T.minPop)
+ok(canRaise(plain, 0), 'a plain city raises riders')
+ok(!canRaise(plain, 0, 2) && !canRaise(plain, 0, 1), 'and nothing else')
+const seat = S.C.findIndex(c => c.o === 0 && c.cap)
+const mine2 = S.C[seat].sp
+ok(canRaise(seat, 0, mine2), 'my capital raises what my realm breeds')
+ok(!canRaise(seat, 0, mine2 === 1 ? 2 : 1), 'but not the other realms\' beast')
+
+// each kind is charged at its own price, and arrives as itself
+const g0 = S.F[0].g, p0 = S.C[seat].p
+ok(raise(seat, 0, mine2), 'the order is taken')
+ok(S.F[0].g === g0 - T.K[mine2][3] && S.C[seat].p === p0 - T.K[mine2][4],
+  `at its own price (💎${T.K[mine2][3]} 👥${T.K[mine2][4]})`)
+ok(S.C[seat].mk === mine2, 'and the muster remembers what it is raising')
+for (n = 0; n < T.muster + 2 && !S.A.length; n++) tick()
+ok(S.A.length === 1 && S.A[0].k === mine2 && S.A[0].w === T.raiseW,
+  'the warband that gathers is that kind, at the usual strength')
+
+// a muster will not pour itself into the wrong kind standing on the same city
+fresh()
+S.F[0].g = 999
+const seat2 = S.C.findIndex(c => c.o === 0 && c.cap)
+S.A = [put(1141, 0, 40, seat2, -1, 0)]
+raise(seat2, 0, S.C[seat2].sp)
+for (n = 0; n < T.muster + 2 && S.A.length < 2; n++) tick()
+ok(S.A.length === 2, 'a specialist muster forms its own warband')
+ok(S.A[0].w === T.raiseW && S.A[1].k === S.C[seat2].sp, 'and leaves the riders alone')
+
+// pacification is boots on a populace — weighting it would move round 14's balance
+const pacify = k => {
+  fresh()
+  const c = S.C.findIndex(x => x.o !== 0)
+  S.C[c].na = S.C[c].o; S.C[c].o = 0; S.C[c].p = 120; S.C[c].u = T.seize
+  S.A = [put(1161, 0, 30, c, -1, k)]
+  for (let z = 0; z < 400; z++) tick()
+  return S.C[c].u
+}
+ok(pacify(0) === pacify(2) && pacify(0) < T.seize, 'a garrison puts unrest down by boots, not by kind')
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

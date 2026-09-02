@@ -11,7 +11,7 @@ function longest () {
   genMap(7); S.me = 0; S.F.forEach(f => { f.ai = 0 })
   return S.E.slice().sort((a, b) => dist(S.C[b[0]], S.C[b[1]]) - dist(S.C[a[0]], S.C[a[1]]))[0]
 }
-const put = (id, o, w, a, t) => ({ id, o, w, a, t, pr: 0, w0: w, st: 0 })
+const put = (id, o, w, a, t, k = 0) => ({ id, o, w, k, a, t, pr: 0, w0: w, st: 0 })
 const gap = (u, v, L) => (1 - u.pr - v.pr) * L    // clear road between two head-on hosts
 
 // --- head-on: two hosts meet, stop, and fight ------------------------------

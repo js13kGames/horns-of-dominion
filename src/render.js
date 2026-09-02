@@ -36,7 +36,10 @@ function spot (a, sp) {
       y: c.y + (d.y - c.y) * pr + (d.x - c.x) / L * sp
     }
   }
-  const ang = a.o * 1.2566 - 1.9, r = cityR(c) + 15
+  // fan by owner around the city, and by kind across that slot. sideways, not
+  // outward: the strength number hangs 18px under its own disc, so stacking
+  // kinds along the spoke drops each label onto the disc behind it
+  const ang = a.o * 1.2566 - 1.9 + (a.k - 1) * 0.8, r = cityR(c) + 17
   return { x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }
 }
 
@@ -140,6 +143,7 @@ export function draw (dt) {
       label('⏳', c.x + r + 6, c.y - r - 2, 12)
     }
     if (lit && unrest(i)) label('✊', c.x - r - 6, c.y - r - 2, 12)   // still being pacified
+    if (lit && c.sp) label(T.K[c.sp][5], c.x + r + 6, c.y + r + 1, 12)   // breeds these
     if (lit && besieged(i)) {                  // a city under attack keeps pulsing
       const q = 0.5 + 0.5 * Math.sin(S.elapsed * 6)
       x.globalAlpha = 0.25 + q * 0.55
@@ -163,7 +167,7 @@ export function draw (dt) {
     x.beginPath(); x.arc(p.x, p.y, 12, 0, 6.2832)
     x.fillStyle = '#0f0d18'; x.fill()
     x.strokeStyle = k; x.lineWidth = 2; x.stroke()
-    label('🦄', p.x, p.y + 1, 13)
+    label(T.K[a.k][5], p.x, p.y + 1, 13)
     label(a.w | 0, p.x, p.y + 18, 11, k, 'bold ')
     if (sel && sel.k === 'a' && sel.i === a.id) {
       x.setLineDash([3, 3]); x.beginPath(); x.arc(p.x, p.y, 17, 0, 6.2832)

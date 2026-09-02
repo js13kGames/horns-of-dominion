@@ -2,7 +2,14 @@
 import { readFileSync } from 'fs'
 const html = readFileSync('dist/index.html', 'utf8')
 const els = {}
-const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)), set: (t, k, v) => (t[k] = v, true) })
+// every glyph the canvas is asked to draw, so the packed build can be checked
+// for the ones that only exist as string literals inside the payload
+const drew = []
+const ctx = new Proxy({}, {
+  get: (t, k) => k === 'fillText' ? (s => (drew.push(String(s)), ctx))
+    : (k in t ? t[k] : (t[k] = () => ctx)),
+  set: (t, k, v) => (t[k] = v, true)
+})
 // created on demand, so adding an element to index.html cannot silently break this
 const mk = id => (els[id] = {
   id, dataset: {}, style: {}, innerHTML: '',
@@ -38,5 +45,9 @@ let t = 0
 for (let i = 0; i < 200; i++) { const q = rafq; rafq = []; t += 100; q.forEach(f => f(t)) }
 ok(/💎/.test(els.hud.innerHTML), 'hud alive in the minified build')
 ok(/🔴|🟠|🟢|🔵|🟣/.test(els.hud.innerHTML), 'standings render')
+// the seed is unpinned here, so which realms are in view varies run to run —
+// but the player always holds the two cities their own realm breeds at
+ok(drew.some(t => t === '🕊' || t === '🐉'),
+  'a specialist glyph survives the pack and reaches the canvas')
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

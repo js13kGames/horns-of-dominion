@@ -37,7 +37,7 @@ Historical warning: `advzip`/`ect` used to be shelled out to inside a bare `catc
 
 There is no test runner. Each harness is a standalone `.mjs` that imports the real `src/` modules, prints `ok`/`FAIL` lines, and exits non-zero. Run one directly:
 
-    node cmd-test.mjs     # flee cost, pathing, splitting, muster, engagement bookkeeping, civil unrest
+    node cmd-test.mjs     # flee cost, pathing, splitting, muster, engagement bookkeeping, civil unrest, unit kinds
     node road-test.mjs    # road engagements, deterministic army placements, no AI
     node dom-test.mjs     # drives the real modules against a stub browser
     node dist-test.mjs    # boots the shipped, packed dist/index.html
@@ -63,7 +63,7 @@ Balance harnesses (slow, minutes):
 
 `src/state.js` opens with `const P = 0.1` — the global pace knob. It multiplies every **rate** (gold, growth, march speed, attrition, siege, mending, unrest, AI cadence) and leaves every **quantity** alone (costs, warriors, wall points). Tick-denominated thresholds are written `x / P`. Change `P` and the whole game speeds up or slows down without a single balance ratio shifting.
 
-`T` in `state.js` is the single balance surface — every tunable lives there, nowhere else. `D` is the four-rung difficulty table; its multipliers apply to AI factions only, the player is always `D[1]`.
+`T` in `state.js` is the single balance surface — every tunable lives there, nowhere else, `T.K` and `T.sp` included. `D` is the four-rung difficulty table; its multipliers apply to AI factions only, the player is always `D[1]`.
 
 The loop is fixed-timestep: `main.js` accumulates real time, runs `tick()` + `ai()` at 0.5 s per tick scaled by `S.speed`, and renders every frame with `S.alpha` interpolation. `src/sim.js` `tick()` is one ordered pass — income, road battles and movement, stack merging, node battles, sieges and capture, civil unrest, repairs, crumbling realms, notifications, victory. Order matters; the numbered comments in `tick()` are load-bearing.
 
@@ -90,6 +90,24 @@ Click one of your hosts and it is under command (the canvas cursor becomes a cro
 Terrain runs **its own RNG**, seeded off `S.seed`. It must never draw from `state.js`'s `rnd()`, or the browser's simulation would drift away from the headless harnesses and every balance number would stop meaning anything.
 
 The coastline traces the convex hull of the cities (a ray hits the hull at `min(support(φ)/cos(θ−φ))` over the sampled supporting lines), leaning partway back toward the raw support so it doesn't come out a rectangle. The skirt on top is floored — cities sit *on* the hull, so a negative margin would leave one standing in the sea. The rock underside is seven copies of that same coastline, scaled about the centroid and stacked downward; the jagged coast is what makes them read as strata.
+
+### Three kinds of warband
+
+`T.K` is the whole unit system: one row per kind, `[field power, wall power, march speed, gold, pop, glyph]`, indexed by `a.k`. Positional on purpose — esbuild does not mangle property names, so `K[k][0]` ships one character at each read site where `K[k].pow` would ship four. Riders are row 0, all `1.0`, priced as an army always was.
+
+**That makes the identity invariant the strongest test available**: with `T.sp` stubbed to all-zero, `sim-test` must return *numerically identical* results to the round-14 baseline. Use it before tuning anything — it is what proves the weighting was threaded everywhere rather than mostly.
+
+`pw(a) = a.w * T.K[a.k][0]` is the field weight, and every place strength is summed goes through it: `melee`, `odds`, and all four AI comparisons. Walls take a second sum (`ram`) against `T.K[a.k][1]`, while besieger blood is still shared by raw bodies. **`garrison()` in `sim.js` is deliberately unweighted** — sitting on a populace is done with boots, a dragon is not worth two riders at it, and weighting it would move round 14's balance. There is a test that fails if someone "fixes" it.
+
+`w` counts bodies everywhere else too — the number under a host, the split slider, `T.raiseW`. Only speed, price and combat weight differ by kind.
+
+Specialists belong to the *place*: `c.sp` is set once in `genMap` on each realm's capital and its next biggest city, and survives conquest like `na`. Chosen **without `rnd()`** on purpose — spending randomness there would shift the whole game's stream and invalidate every balance number.
+
+**The AI must not raise flyers.** It scores targets purely by adjacency and never reads `T.speed`, so it cannot cash in a pegasus's speed, while the `/ T.K[a.k][1]` wall term makes even an undefended city look impossible to one. Letting it raise them stalled 36 of the first 40 games in a 400-game run, every one at 19 cities against 1: flyers that will not siege still drift between friendly cities, burning the single march order a turn buys. The gate is `T.K[c.sp][1] >= 1` — dragons yes, pegasi never. This is the same class of fact as "the AI never splits hosts": measured, and not a bug to fix without evidence.
+
+**Two known gaps, measured and accepted** (do not rediscover them): two dragon realms can deadlock — 1 stalemate in 1200 all-AI games, seed 9180, realms 0 and 2 frozen at ten cities each — plus one decided-but-44k-tick game. Both are all-AI artifacts; a real game has a human in one of the five seats, which is the thing that breaks a frozen border. And `diff-test` reads Duelist at ~10% rather than 20% because it tests realm 0, which breeds dragons: slow units cost the AI most when it only gets one action a turn. Putting the rung on each slot in turn gives 10 / 25.5 / 14.5 / 18 / 32 %, so the effect is real and rung-dependent, not a measurement artifact. At Warlord — the default, and where `sim-test` runs — parity is 155/158/157/159/171 against 160 expected. Retuning dragons to fix the easy rungs would break the parity that already holds at the default one.
+
+Kinds refuse to merge, so a node can hold three of your hosts. Two consequences: `spot()` in `render.js` fans by owner *and* kind — sideways across the faction slot, never outward along the spoke, because a host's strength number hangs 18px under its disc and would land on the disc behind it — and the hit test in `main.js` collects every host in range and cycles rather than taking the first.
 
 ### Civil unrest
 

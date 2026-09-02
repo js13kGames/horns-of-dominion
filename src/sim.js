@@ -17,10 +17,15 @@ const road = a => a.a < a.t ? a.a * NC + a.t : a.t * NC + a.a
 const span = a => dist(S.C[a.a], S.C[a.t])
 const along = (a, pr) => a.a < a.t ? pr * span(a) : (1 - pr) * span(a)
 
+// a warband's weight in a field fight. `w` counts bodies everywhere — the number
+// under the host, the split slider, the garrison that puts unrest down — and this
+// is the only place a kind makes those bodies count for more or less
+export const pw = a => a.w * T.K[a.k][0]
+const rate = a => T.speed * T.K[a.k][2]        // world units per tick, by kind
 // march progress including the current frame's fraction of a tick, so the
 // renderer and the panel read out continuous motion between ticks
 export const prog = a => a.t < 0 ? 1
-  : Math.min(1, a.pr + (a.st ? 0 : S.alpha * T.speed / span(a)))
+  : Math.min(1, a.pr + (a.st ? 0 : S.alpha * rate(a) / span(a)))
 
 // --- what the player can see -----------------------------------------------
 // purely derived: a reveal lasts only while a host is there, so there is no
@@ -59,7 +64,9 @@ export function hop (from, to) {
 // ---- civil unrest ---------------------------------------------------------
 // One number per city: how badly its people want their own realm back. It only
 // moves while someone else holds the place, and a garrison is what holds it
-// down — in proportion to the size of the crowd being sat on.
+// down — in proportion to the size of the crowd being sat on. Deliberately
+// bodies, not `pw`: sitting on a populace is done with boots, and a dragon is
+// not worth two riders at it. Weighting this would move round 14's balance.
 const garrison = (i, f) => at(i).reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
 export const unrest = i => S.C[i].u >= T.calm
 
@@ -76,25 +83,27 @@ function revolt (i) {
 }
 
 // ---- player / AI actions -------------------------------------------------
-export const canRaise = (i, f) => {
+// every city fields riders; only the ten that breed a specialist field anything else
+export const canRaise = (i, f, k = 0) => {
   const c = S.C[i]
-  return c.o === f && !c.mu && !c.oc && c.u < T.calm &&
-    c.p >= T.minPop && S.F[f].g >= T.raiseG
+  return c.o === f && !c.mu && !c.oc && c.u < T.calm && (!k || k === c.sp) &&
+    c.p >= T.minPop && c.p >= T.K[k][4] && S.F[f].g >= T.K[k][3]
 }
 // gold and populace are spent now; the warriors take T.muster ticks to gather
-export function raise (i, f) {
-  if (!canRaise(i, f)) return 0
+export function raise (i, f, k = 0) {
+  if (!canRaise(i, f, k)) return 0
   const c = S.C[i]
-  S.F[f].g -= T.raiseG
-  c.p -= T.raiseP
+  S.F[f].g -= T.K[k][3]
+  c.p -= T.K[k][4]
   c.mu = T.muster
+  c.mk = k                                   // the muster remembers what it is raising
   return 1
 }
 function mustered (i) {
   const c = S.C[i]
-  const ex = at(i).find(a => a.o === c.o && !a.hold)
+  const ex = at(i).find(a => a.o === c.o && a.k === c.mk && !a.hold)
   if (ex) ex.w += T.raiseW
-  else S.A.push({ id: nextId++, o: c.o, w: T.raiseW, a: i, t: -1, pr: 0, st: 0, dst: -1 })
+  else S.A.push({ id: nextId++, o: c.o, w: T.raiseW, k: c.mk, a: i, t: -1, pr: 0, st: 0, dst: -1 })
 }
 
 export const canFix = (i, f) => {
@@ -115,7 +124,7 @@ const flee = a => { a.w *= 1 - T.flee; turn(a) }
 // strength on each side of a fight, so a host can judge whether staying is madness
 const odds = g => {
   const pow = {}
-  for (const a of g) pow[a.o] = (pow[a.o] || 0) + a.w
+  for (const a of g) pow[a.o] = (pow[a.o] || 0) + pw(a)
   const all = Object.values(pow).reduce((x, y) => x + y, 0)
   return a => pow[a.o] < (all - pow[a.o]) * T.odds
 }
@@ -128,7 +137,7 @@ export function split (a, n) {
   n = Math.max(1, Math.min(Math.round(n), Math.floor(a.w) - 1))
   a.w -= n
   a.hold = 1
-  S.A.push({ id: nextId++, o: a.o, w: n, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1 })
+  S.A.push({ id: nextId++, o: a.o, w: n, k: a.k, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1 })
   return 1
 }
 
@@ -155,7 +164,7 @@ function melee (g, gd, gf) {
   const foesOf = f => g.filter(b => b.o !== f)
   for (const a of g) {
     const foes = foesOf(a.o)
-    if (foes.length) hurt(foes[(rnd() * foes.length) | 0], T.atk * a.w * rf(0.8, 1.2))
+    if (foes.length) hurt(foes[(rnd() * foes.length) | 0], T.atk * pw(a) * rf(0.8, 1.2))
   }
   if (gd) {                                    // the city garrison joins in
     const foes = foesOf(gf)
@@ -210,7 +219,7 @@ function roads () {
   for (const a of S.A) {
     if (a.t < 0 || a.st) continue
     const L = span(a), was = along(a, a.pr)
-    let my = along(a, a.pr + T.speed / L)
+    let my = along(a, a.pr + rate(a) / L)
     const dir = my > was ? 1 : -1
     // walk up to contact with anything in the way, never through it: an enemy,
     // or a friend already locked in a melee. free friends are passed by.
@@ -251,7 +260,8 @@ export function tick () {
     const here = at(i)
     for (let u = 0; u < here.length; u++) {
       for (let v = u + 1; v < here.length; v++) {
-        if (here[u].o !== here[v].o || here[v].w <= 0 || here[u].hold || here[v].hold) continue
+        if (here[u].o !== here[v].o || here[u].k !== here[v].k ||
+            here[v].w <= 0 || here[u].hold || here[v].hold) continue
         here[u].w += here[v].w; here[v].w = 0
       }
     }
@@ -286,12 +296,13 @@ export function tick () {
     if (c.o === f) continue
 
     // 5. siege
-    const force = here.reduce((n, a) => n + a.w, 0)
+    const force = here.reduce((n, a) => n + a.w, 0)          // bodies, for the blood
+    const ram = here.reduce((n, a) => n + a.w * T.K[a.k][1], 0)   // weight, for the walls
     const sids = here.map(z => z.id)
     for (const a of here) { a.eg = sids; a.sg = i }
     const loss = T.sgLoss * c.d
     for (const a of here) a.w -= loss * (a.w / force)
-    c.s -= force * T.sgDmg * (1 + S.tick / T.escal)   // long wars grind walls faster
+    c.s -= ram * T.sgDmg * (1 + S.tick / T.escal)     // long wars grind walls faster
     if (c.s <= 0) {
       const old = c.o
       if (f === S.me) S.stat.took++

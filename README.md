@@ -22,6 +22,19 @@ in the dark are not drawn at all — and neither are battles fought there: no cl
 markers, no capture flashes, no log entries for events beyond your reach. The AI plays
 with full information.
 
+**Three kinds of warband.** Every city raises unicorn riders — the dependable middle, and
+what the game was built on. Ten cities raise something else as well: each realm's capital and
+its next biggest city breed that realm's own beast, and because it belongs to the place rather
+than the owner, taking an enemy capital is how you come by their dragons. Pegasi are cheap and
+nearly twice as fast, but feeble against stone. Dragons cost more than twice a rider, crawl at
+half the pace, and hit over twice as hard in the field while chewing through walls. Every
+warband musters the same forty bodies whatever it is, so the number under a host is always a
+headcount and the glyph tells you what they are. A warband is all one kind and kinds will not
+pool, so a mixed force is several warbands standing together rather than one stack — fast
+pegasi to raid and redeploy, dragons to crack what you cannot out-grind. The realms' own
+generals never raise pegasi: they pick their targets by what is next door and have no use for
+speed.
+
 **Civil unrest.** Every city remembers the realm it was drafted into as *native*, however
 often it changes hands, and carries one number — how badly its people want that realm
 back. It starts at nothing and stays there while the native realm holds the place. The
@@ -76,7 +89,7 @@ replays the exact same kingdom.
     node sim-test.mjs 5000     # ...on another seed range, to tell bias from noise
     node sim-test.mjs 1000 3   # ...with every realm on a given difficulty rung
     node road-test.mjs   # road-engagement mechanics, deterministic placements
-    node cmd-test.mjs    # flee cost, pathing, splitting, muster, roster, unrest
+    node cmd-test.mjs    # flee cost, pathing, splitting, muster, roster, unrest, unit kinds
     node diff-test.mjs   # is the difficulty ladder monotonic? one rung vs four Duelists
     node bias.mjs        # starting-position parity across the five realm slots
     node dom-test.mjs    # drives the real modules against a stub browser
