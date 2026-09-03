@@ -22,18 +22,28 @@ in the dark are not drawn at all — and neither are battles fought there: no cl
 markers, no capture flashes, no log entries for events beyond your reach. The AI plays
 with full information.
 
-**Three kinds of warband.** Every city raises unicorn riders — the dependable middle, and
+**Three kinds of warband.** Every city raises footmen — the dependable middle, and
 what the game was built on. Ten cities raise something else as well: each realm's capital and
 its next biggest city breed that realm's own beast, and because it belongs to the place rather
-than the owner, taking an enemy capital is how you come by their dragons. Pegasi are cheap and
-nearly twice as fast, but feeble against stone. Dragons cost more than twice a rider, crawl at
-half the pace, and hit over twice as hard in the field while chewing through walls. Every
+than the owner, taking an enemy capital is how you come by their dragons. Unicorns cost nearly twice a footman and are
+worth it: almost twice as fast, and murderous in the open. Dragons cost twice a footman, crawl at
+half the pace, and chew through walls. Every
 warband musters the same forty bodies whatever it is, so the number under a host is always a
 headcount and the glyph tells you what they are. A warband is all one kind and kinds will not
-pool, so a mixed force is several warbands standing together rather than one stack — fast
-pegasi to raid and redeploy, dragons to crack what you cannot out-grind. The realms' own
-generals never raise pegasi: they pick their targets by what is next door and have no use for
-speed.
+pool, so a mixed force is several warbands standing together rather than one stack.
+
+
+**Where you fight decides who wins.** On a road, a host fights at the pace it marches: whoever
+is faster has caught the other strung out in the open, and the gap between their speeds is the
+bonus. Behind walls it counts for nothing — nobody outruns masonry. So the order reverses
+depending on the ground. In the open, unicorns break footmen and footmen break dragons, and unicorns
+maul dragons worst of all, the slowest thing on the map. At a city it is exactly the other way
+round: dragons breach in a third of the time footmen need, and unicorns are no siege engine at all.
+Catching a dragon column between cities is the single best thing a unicorn does.
+
+One rule underpins all of it: **numbers are health here.** Damage comes off bodies, while a
+kind's strength only multiplies what it deals — so fifty dragons lose to a hundred footmen for
+the same gold. Weight of numbers is real.
 
 **Civil unrest.** Every city remembers the realm it was drafted into as *native*, however
 often it changes hands, and carries one number — how badly its people want that realm

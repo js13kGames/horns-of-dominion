@@ -250,21 +250,23 @@ const crossing = k => {
   return z
 }
 const cR = crossing(0), cP = crossing(1), cD = crossing(2)
-ok(cP < cR && cR < cD, `pegasi outpace riders outpace dragons (${cP}/${cR}/${cD} ticks)`)
+ok(cP < cR && cR < cD, `unicorns outpace footmen outpace dragons (${cP}/${cR}/${cD} ticks)`)
 ok(Math.abs(cR / cP - T.K[1][2]) < 0.15, `the gap tracks the table (${(cR / cP).toFixed(2)}x vs ${T.K[1][2]}x)`)
 ok(Math.abs(cD / cR - 1 / T.K[2][2]) < 0.15, `at both ends (${(cD / cR).toFixed(2)}x vs ${(1 / T.K[2][2]).toFixed(2)}x)`)
 
-// field power: equal numbers, unequal fight
-fresh()
-;[i, j] = longRoad()
-S.A = [put(1111, 0, 100, i, j, 2), put(1112, 1, 100, j, i, 0)]
-for (n = 0; n < 6000 && S.A.length === 2; n++) tick()
-ok(S.A.length === 1 && S.A[0].o === 0, 'a hundred dragons break a hundred riders')
-fresh()
-;[i, j] = longRoad()
-S.A = [put(1113, 0, 100, i, j, 1), put(1114, 1, 100, j, i, 0)]
-for (n = 0; n < 6000 && S.A.length === 2; n++) tick()
-ok(S.A.length === 1 && S.A[0].o === 1, 'and a hundred pegasi lose to them')
+// the ambush triangle, body for body, on a road: whoever is faster caught the
+// other strung out, and that beats raw strength
+const road = (ka, kb) => {
+  fresh()
+  const [u, v] = longRoad()
+  S.A = [put(1111, 0, 100, u, v, ka), put(1112, 1, 100, v, u, kb)]
+  for (let z = 0; z < 9000 && S.A.length === 2; z++) tick()
+  return S.A.length === 1 ? S.A[0].o : -1
+}
+ok(road(1, 0) === 0, 'on a road unicorns break footmen')
+ok(road(0, 2) === 0, 'footmen break dragons')
+ok(road(1, 2) === 0, 'and unicorns maul dragons worst of all — the slowest thing there is')
+ok(road(2, 1) === 1, 'a dragon never wins that one by turning it around')
 
 // wall power: the same hundred warriors, three very different sieges
 const breach = k => {
@@ -277,15 +279,15 @@ const breach = k => {
   return z
 }
 const bD = breach(2), bR = breach(0), bP = breach(1)
-ok(bD < bR && bR < bP, `dragons breach fastest, pegasi slowest (${bD}/${bR}/${bP} ticks)`)
-ok(bP > bR * 2, 'pegasi are no siege engine at all')
+ok(bD < bR && bR < bP, `dragons breach fastest, unicorns slowest (${bD}/${bR}/${bP} ticks)`)
+ok(bP > bR * 2, 'unicorns are no siege engine at all')
 
 // kinds keep their own company
 fresh()
 k = S.C.findIndex(c => c.o === 0)
 S.A = [put(1131, 0, 50, k, -1, 0), put(1132, 0, 50, k, -1, 2)]
 tick()
-ok(S.A.length === 2, 'riders and dragons sharing a city do not pool')
+ok(S.A.length === 2, 'footmen and dragons sharing a city do not pool')
 S.A = [put(1133, 0, 50, k, -1, 2), put(1134, 0, 50, k, -1, 2)]
 tick()
 ok(S.A.length === 1 && S.A[0].w === 100, 'two dragon warbands do')
@@ -293,11 +295,11 @@ S.A = [put(1135, 0, 90, k, -1, 2)]
 split(S.A[0], 30)
 ok(S.A.length === 2 && S.A.every(a => a.k === 2), 'and splitting dragons yields dragons')
 
-// the raise gate: riders anywhere, the specialist only where it is bred
+// the raise gate: footmen anywhere, the specialist only where it is bred
 fresh()
 S.F[0].g = 999
 const plain = S.C.findIndex(c => c.o === 0 && !c.sp && c.p >= T.minPop)
-ok(canRaise(plain, 0), 'a plain city raises riders')
+ok(canRaise(plain, 0), 'a plain city raises footmen')
 ok(!canRaise(plain, 0, 2) && !canRaise(plain, 0, 1), 'and nothing else')
 const seat = S.C.findIndex(c => c.o === 0 && c.cap)
 const mine2 = S.C[seat].sp
@@ -322,7 +324,45 @@ S.A = [put(1141, 0, 40, seat2, -1, 0)]
 raise(seat2, 0, S.C[seat2].sp)
 for (n = 0; n < T.muster + 2 && S.A.length < 2; n++) tick()
 ok(S.A.length === 2, 'a specialist muster forms its own warband')
-ok(S.A[0].w === T.raiseW && S.A[1].k === S.C[seat2].sp, 'and leaves the riders alone')
+ok(S.A[0].w === T.raiseW && S.A[1].k === S.C[seat2].sp, 'and leaves the footmen alone')
+
+// the open field: a host fights at the pace it marches, so the counter comes out
+// of the movement rules rather than a matchup table
+const clash = (k, road) => {
+  fresh()
+  const [u, v] = longRoad()
+  const n = Math.round(100 * T.K[0][3] / T.K[k][3])   // the same gold, either way
+  S.A = road
+    ? [put(1171, 0, n, u, v, k), put(1172, 1, 100, v, u, 0)]
+    : [put(1171, 0, n, u, -1, k), put(1172, 1, 100, u, -1, 0)]
+  for (let z = 0; z < 9000 && S.A.length === 2; z++) tick()
+  return S.A.length === 1 ? S.A[0].o : -1
+}
+// and now for the same 💎 rather than the same bodies. A unicorn is priced as an
+// elite, so it buys few: it must earn its place by matchup, not by weight of numbers
+const forSameGold = k => Math.round(100 * T.K[0][3] / T.K[k][3])
+ok(forSameGold(1) < 100 && forSameGold(2) < 100,
+  `💎 for 100 footmen buys only ${forSameGold(1)} unicorns or ${forSameGold(2)} dragons`)
+ok(clash(1, 0) === 1, 'so few unicorns lose to footmen at a city')
+ok(clash(2, 1) === 1, 'and so few dragons lose to them on the road')
+// because damage comes off `w`, body count IS hit points here: a half-sized host
+// of double-strength warriors trades evenly on output and dies twice as fast. The
+// dragon's edge is the siege, where losses are T.sgLoss * c.d whatever you are
+const raze = k => {
+  fresh()
+  const c = S.C.findIndex(x => x.o !== 0)
+  S.C[c].s = S.C[c].m
+  S.A = [put(1181, 0, Math.round(100 * T.K[0][3] / T.K[k][3]), c, -1, k)]
+  let z = 0
+  for (; z < 20000 && S.C[c].o !== 0; z++) tick()
+  return z
+}
+const rzR = raze(0), rzD = raze(2), rzP = raze(1)
+ok(rzD < rzR && rzR < rzP, `for the same 💎, dragons breach fastest (${rzD}/${rzR}/${rzP} ticks)`)
+ok(rzP > rzR, 'and flyers slowest — the road is theirs, the wall is not')
+const openMult = k => (1 + T.K[k][2]) / 2
+ok(openMult(1) > 1 && openMult(0) === 1 && openMult(2) < 1,
+  'speed is the open-field multiplier — flyers gain, footmen neutral, dragons pay')
 
 // pacification is boots on a populace — weighting it would move round 14's balance
 const pacify = k => {

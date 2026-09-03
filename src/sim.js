@@ -21,6 +21,18 @@ const along = (a, pr) => a.a < a.t ? pr * span(a) : (1 - pr) * span(a)
 // under the host, the split slider, the garrison that puts unrest down — and this
 // is the only place a kind makes those bodies count for more or less
 export const pw = a => a.w * T.K[a.k][0]
+// a fight between cities is decided at the pace you march. A host's own speed is
+// its weight in the open — no matchup table needed, the counter falls out of the
+// movement rules: a dragon is slow, so it spends its life on roads being caught.
+// At a city speed buys nothing and this is 1: walls do not manoeuvre.
+// `g[0].t >= 0` separates the two — a road cluster is all marchers, a node all rest
+const afield = g => g[0].t >= 0
+const might = (a, o) => pw(a) * (o ? (1 + T.K[a.k][2]) / 2 : 1)
+// the ambush. `melee` already aims each host at one particular enemy, so the
+// matchup can be read off the two march rates: outpace what you land on and you
+// caught it strung out on the road. Behind walls nobody gets outrun, so it is 1.
+const strike = (a, b, o) => might(a, o) *
+  (o ? Math.max(0.2, 1 + (T.K[a.k][2] - T.K[b.k][2]) * T.amb) : 1)
 const rate = a => T.speed * T.K[a.k][2]        // world units per tick, by kind
 // march progress including the current frame's fraction of a tick, so the
 // renderer and the panel read out continuous motion between ticks
@@ -66,7 +78,7 @@ export function hop (from, to) {
 // moves while someone else holds the place, and a garrison is what holds it
 // down — in proportion to the size of the crowd being sat on. Deliberately
 // bodies, not `pw`: sitting on a populace is done with boots, and a dragon is
-// not worth two riders at it. Weighting this would move round 14's balance.
+// not worth two footmen at it. Weighting this would move round 14's balance.
 const garrison = (i, f) => at(i).reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
 export const unrest = i => S.C[i].u >= T.calm
 
@@ -83,7 +95,7 @@ function revolt (i) {
 }
 
 // ---- player / AI actions -------------------------------------------------
-// every city fields riders; only the ten that breed a specialist field anything else
+// every city fields footmen; only the ten that breed a specialist field anything else
 export const canRaise = (i, f, k = 0) => {
   const c = S.C[i]
   return c.o === f && !c.mu && !c.oc && c.u < T.calm && (!k || k === c.sp) &&
@@ -123,8 +135,8 @@ const turn = a => { const b = a.a; a.a = a.t; a.t = b; a.pr = 1 - a.pr; a.st = 0
 const flee = a => { a.w *= 1 - T.flee; turn(a) }
 // strength on each side of a fight, so a host can judge whether staying is madness
 const odds = g => {
-  const pow = {}
-  for (const a of g) pow[a.o] = (pow[a.o] || 0) + pw(a)
+  const pow = {}, o = afield(g)
+  for (const a of g) pow[a.o] = (pow[a.o] || 0) + might(a, o)
   const all = Object.values(pow).reduce((x, y) => x + y, 0)
   return a => pow[a.o] < (all - pow[a.o]) * T.odds
 }
@@ -159,12 +171,14 @@ export function order (a, j) {
 // one resolver for every fight. each host swings at a randomly chosen enemy
 // host; damage is banked and applied together, so resolution order never matters
 function melee (g, gd, gf) {
-  const hit = new Map()
+  const hit = new Map(), o = afield(g)
   const hurt = (x, d) => hit.set(x, (hit.get(x) || 0) + d)
   const foesOf = f => g.filter(b => b.o !== f)
   for (const a of g) {
     const foes = foesOf(a.o)
-    if (foes.length) hurt(foes[(rnd() * foes.length) | 0], T.atk * pw(a) * rf(0.8, 1.2))
+    if (!foes.length) continue
+    const t = foes[(rnd() * foes.length) | 0]
+    hurt(t, T.atk * strike(a, t, o) * rf(0.8, 1.2))
   }
   if (gd) {                                    // the city garrison joins in
     const foes = foesOf(gf)

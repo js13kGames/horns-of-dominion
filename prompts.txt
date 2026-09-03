@@ -356,6 +356,71 @@ realm 0, a dragon realm.
 
 +301 B zipped (12,103 -> 12,404).
 
+# Round 16
+alright now, we DO need to AI account for movement speed and use it in-game, but dont overdo
+yourself to make sure this is perfectly balanced; discovering gaps in the design is part of the fun
+
+The AI now reads road lengths: eta() plus a soon() discount on every target score, and siege
+relief picks whoever arrives first instead of whoever is first in S.A. Also fixed a flaw I had
+put in last round — the standing-army ceiling counted fighting strength, which let a cheap weak
+unit field 1.67x the bodies. It counts gold now, in rider-equivalents, which inflates for nobody.
+
+The gap this exposed, which is the interesting part: speed-awareness alone does NOT make flyers
+worth raising. Priced four different ways, letting the AI field pegasi pushed p90 from 6.4k to
+22k ticks and brought stalemates back, because a flyer is bad at the one act that ends a game —
+taking a walled city. Total conquest structurally disfavours a raider. Raiding needs a mechanic
+(pillage gold or populace, cut a road, walk into an ungarrisoned city), not a better price. Left
+flyers player-only and wrote the finding down rather than tuning at it.
+
+Pegasi did get cheaper and mildly siege-capable on the way through (💎35 👥30 wall 0.2 ->
+💎20 👥22 wall 0.5), which matters because the player is the only one who fields them.
+
+Then, chasing an Age of Empires light-cavalry analogy: speed now doubles as a host's weight in
+the open, so `might()` scales power by (1 + speed) / 2 on roads and by nothing at a city. No
+matchup table — the triangle falls out of the movement rules. Per 💎 flyers win the road, dragons
+the wall. It also shortened wars on its own (p99 20.7k -> 10.4k) by stopping slow dragon armies
+deadlocking on roads.
+
+Found on the way: body count is hit points here. Damage comes off `w` while power only multiplies
+output, so 50 dragons lose to 100 riders for the same gold. Dragons are a siege arm, full stop.
+
+Retested letting the AI raise flyers now they are the best road fighters per 💎. Still worse
+(p90 6.6k -> 12k, a stalemate, dragon realms down to 14 wins in 200). Winning fights is not
+taking cities. Light cavalry works in AoE because killing villagers wins games; here only holding
+cities does. It is a victory-condition problem, not a unit problem — raiding is the missing piece.
+
+Then: make Pegasi NOT a trash unit — as dangerous as Dragons, via a bonus for ambushing on the
+road. How should the AI decide to build them? Maybe randomly, or a faction doctrine.
+
+Built it as a per-pair bonus: melee already aims each host at one enemy, so the matchup reads off
+the two march rates (1 + speed gap * T.amb) on roads only. Pegasi repriced as elite (💎45 👥35).
+They now maul dragons 4.6:1 and riders 2.9:1 in the open, and the triangle inverts with the
+ground — road: 🕊 > 🦄 > 🐉; wall: 🐉 > 🦄 > 🕊.
+
+Went with doctrine over randomness: a realm raises what its cities breed, capped at T.wing of its
+war chest, and flyer hosts get first refusal on any column walking a road they touch. Randomness
+would have added variance to the exact measurement we were trying to read.
+
+The experiment refuted its own premise, which is the useful part. Sweeping T.wing over 150 games
+a rung: flyer realms sit at parity (30 v 30) when they raise NO flyers, and fall to 24 v 38 at
+30% commitment. Monotonic. Making them lethal moved that curve not at all — road dominance has no
+route to a city, so every coin spent on it is a coin not spent winning. Third independent
+confirmation that this is a victory-condition problem, not a unit problem. Raiding is the answer.
+
+Shipping at T.wing 0.15: 0 stalemates, 0 over 24k, spread 35-50, p50 4241.
+
+"a dove as a pegasus icon looks crap" — then "maybe the unicorn are the flying ones, and we
+replace the current riders with infantry". Much better, and it fixed a legibility problem too: a
+host draws on a near-black disc, so 🦅 and 🐎 both came out as dark smudges at 13px when I looked
+at them. 🦄 is light and reads. So: 🔱 footmen (raised anywhere), 🦄 unicorns (the flyer), 🐉
+dragons (the ram). Renamed throughout; the title no longer says "raise unicorn warbands", since
+unicorns are now the rare thing. Stats untouched — purely glyphs and naming, so balance is
+identical and needed no re-run.
+
+12,603 B zipped, 709 B headroom.
+
++219 B zipped (12,403 -> 12,622).
+
 # Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)

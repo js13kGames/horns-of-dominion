@@ -71,7 +71,7 @@ const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`
 
 export function title () {
   ov.innerHTML = `<h1>Horns of Dominion</h1>` +
-    `<p>Raise unicorn warbands and conquer the Rainbow Kingdom.</p>` +
+    `<p>Raise warbands and conquer the Rainbow Kingdom.</p>` +
     `<div class=diff>${D.map((d, i) =>
       `<button data-a=d data-i=${i} class="${S.diff === i ? 'on' : ''}">${d.nm}</button>`).join('')}</div>` +
     `<div class=realms>${REALMS.map(([nm, c, em], i) =>
@@ -87,7 +87,7 @@ export function ending () {
     `<div><b>${t.took}</b><span>🏰 taken</span></div>` +
     `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
     `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
-    `<div><b>${t.most | 0}</b><span>🦄 largest host</span></div>` +
+    `<div><b>${t.most | 0}</b><span>${T.K[0][5]} largest host</span></div>` +
     `</div><button data-a=n>🌈 New story</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }

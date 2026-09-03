@@ -47,7 +47,7 @@ ok(/💎/.test(els.hud.innerHTML), 'hud alive in the minified build')
 ok(/🔴|🟠|🟢|🔵|🟣/.test(els.hud.innerHTML), 'standings render')
 // the seed is unpinned here, so which realms are in view varies run to run —
 // but the player always holds the two cities their own realm breeds at
-ok(drew.some(t => t === '🕊' || t === '🐉'),
+ok(drew.some(t => t === '🦄' || t === '🐉'),
   'a specialist glyph survives the pack and reaches the canvas')
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

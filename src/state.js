@@ -40,7 +40,7 @@ export const T = {
   mend: 0.15 * P,   // passive wall regen per tick
   flee: 0.25,       // share of a host lost when it breaks contact
   odds: 0.7,        // a host disengages below this share of the enemy's strength
-  aiHoard: 1.5,     // AI raises once gold > a rider's price * aiHoard
+  aiHoard: 1.5,     // AI raises once gold > a footman's price * aiHoard
   aiEvery: 1 / P,   // ticks between AI turns — scales with pace, or the AI
                     // would get ten times as many decisions per unit of war
   aiCap: 55,        // AI stops mustering above this many warriors per city held
@@ -60,14 +60,19 @@ export const T = {
   rise: 0.05,       // chance of it doing so, per check
   // the three kinds of warband. positional, not named: esbuild does not mangle
   // property names, so `K[k][0]` ships one character where `K[k].pow` ships four
-  // at every read site. rider is all 1.0 and priced as an army always was, so a
+  // at every read site. footman is all 1.0 and priced as an army always was, so a
   // board with no specialist cities behaves numerically exactly like the old game.
   //   [field power, wall power, march speed, gold, pop, glyph]
-  // dragons are priced *below* riders per point of field power (1.76 to 1.60).
+  //   0 footmen, raised anywhere · 1 unicorns, the flyer · 2 dragons, the ram.
+  // Glyphs must be *light*: a host is drawn on a near-black disc, so 🦅 and 🐎
+  // came out as dark smudges at 13px and were rejected on looking at them.
+  // dragons are priced *below* footmen per point of field power (1.76 to 1.60).
   // that pays for a drawback the AI cannot manage: it scores targets by adjacency
-  // and never reads T.speed, so a slow host is pure cost to it. At rider parity
-  // its two dragon realms won 202 of 1200 games against the flyer realms' 265.
-  K: [[1, 1, 1, 25, 40, '🦄'], [0.6, 0.2, 1.9, 35, 30, '🕊'], [2.2, 2.5, 0.55, 50, 45, '🐉']],
+  // and never reads T.speed, so a slow host is pure cost to it. At footman parity
+  // its two dragon realms won 202 of 1200 games against the unicorn realms' 265.
+  K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐉']],
+  amb: 0.6,          // how hard a speed advantage bites in an open-field fight
+  wing: 0.15,       // share of a realm's war chest it will keep in flyers, no more
   sp: [2, 1, 2, 1, 1] // the specialist each realm breeds, at its capital and one other city
 }
 
