@@ -26,6 +26,22 @@ globalThis.addEventListener = (t, f) => { win.h[t] = f }
 let rafq = []
 globalThis.requestAnimationFrame = f => rafq.push(f)
 
+// audio: Node has Blob and URL.createObjectURL already, so only the element is
+// stubbed. The tracks are ground for real, which is the point — a broken effect
+// throws here rather than in the browser. made[] is creation order, which
+// audio.js fixes: 0 song · 1 horn · 2 chime · 3 fanfare · 4 clash
+const SONG = 0, HORN = 1, CHIME = 2, FANFARE = 3, CLASH = 4
+const made = [], played = []
+globalThis.Audio = class {
+  constructor (src) {
+    this.i = made.length; this.src = src
+    this.loop = false; this.volume = 1; this.paused = true; this.currentTime = 0
+    made.push(this)
+  }
+  play () { this.paused = false; played.push(this.i); return Promise.resolve() }
+  pause () { this.paused = true }
+}
+
 const { S, T } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
 await import('./src/main.js')
@@ -86,8 +102,25 @@ S.speed = 1
 
 // select one of my cities and raise an army
 const mine = S.C.findIndex(c => c.o === 2)
+played.length = 0
 tap(S.C[mine].x, S.C[mine].y)
 ok(S.sel && S.sel.k === 'c' && S.sel.i === mine, 'clicking a city selects it')
+
+// --- audio ------------------------------------------------------------------
+ok(made.length === 5, 'the song and all four effects render (' + made.length + ' of 5)')
+ok(made.every(a => a.src.startsWith('blob:')), 'each as its own wav blob')
+ok(made[SONG].loop && made[CLASH].loop, 'the song and the din of battle loop')
+ok(!made[HORN].loop && !made[CHIME].loop && !made[FANFARE].loop, 'the one-shots do not')
+ok(made[CLASH].volume < made[SONG].volume, 'the din sits under the song')
+ok(!made[SONG].paused, 'the song plays once a realm is picked')
+ok(played.includes(CHIME), 'inspecting a town chimes')
+win.h.keydown({ key: 'm' })
+played.length = 0
+tap(S.C[mine].x, S.C[mine].y)
+ok(!played.length, 'and muting silences it')
+ok(made[SONG].paused, 'along with the song')
+win.h.keydown({ key: 'm' })
+ok(!made[SONG].paused, 'unmuting brings the song back')
 step(1)
 ok(/Raise/.test(els.pan.innerHTML), 'city panel offers Raise')
 S.F[2].g = 999; S.C[mine].p = 200
@@ -130,15 +163,19 @@ S.A = S.A.filter(a => seen.includes(a.id)); S.sel = null
 
 // picking a host up is what puts it under command — the map is its order sheet
 step(1)
+played.length = 0
 tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
+ok(played.includes(CHIME), 'and picking it up chimes')
 ok(active() === army, 'and that alone puts it under command')
 ok(!/Banner|Warriors|Status|Bound for/.test(els.pan.innerHTML),
   'the panel carries no readout — banner, strength and march are all on the map')
 
 const dest = S.C[mine].n[0]
+played.length = 0
 tap(S.C[dest].x, S.C[dest].y)
 ok(army.t === dest, 'clicking a city marches it there')
+ok(played.includes(CHIME), 'and naming a destination chimes')
 ok(active() === army, 'and it stays under command, so the order can be redirected')
 
 // a city always wins the hit test over a host standing on it, or a march could
@@ -185,7 +222,9 @@ S.speed = 1
 ok(S.C[mine].s > w0, 'walls rise as the masons work (' + w0 + ' -> ' + (S.C[mine].s | 0) + ')')
 
 // speed buttons and keys
+played.length = 0
 click('v', 4); ok(S.speed === 4, 'speed button sets 4x')
+ok(played.includes(CHIME), 'and chimes')
 win.h.keydown({ key: ' ', preventDefault () {} }); ok(S.speed === 0, 'space pauses')
 win.h.keydown({ key: '2' }); ok(S.speed === 2, 'key 2 sets speed')
 win.h.keydown({ key: 'Escape' })
@@ -292,12 +331,30 @@ S.fx = []
 S.A = [host(7003, 3, near), host(7004, 4, near)]
 ok(watch(near, 20), 'the same battle in sight does draw one')
 
+// the din of battle rides on that marker, so it follows what the player can
+// see rather than what the board is doing. sampled while the fight is still
+// alive: at 8x a 120-v-120 melee is decided inside the twenty frames above
+S.A = []; S.fx = []; step(2)
+ok(made[CLASH].paused, 'with no fight on screen the din is quiet')
+S.A = [host(7007, 3, near), host(7008, 4, near)]
+S.speed = 8; step(2, 100)
+ok(!made[CLASH].paused, 'a battle in sight starts it')
+S.A = [host(7009, 3, dark), host(7010, 4, dark)]
+S.fx = []; step(2, 100)
+ok(made[CLASH].paused, 'the same battle in the fog does not')
+S.A = []; S.fx = []; S.speed = 1
+
 // --- being attacked is announced ------------------------------------------
 const town = S.C.findIndex(c => c.o === S.me)
 S.fx = []; S.toast = ''
 S.A = [host(7005, 3, town)]
+played.length = 0
 ticks(4)
 ok(/under attack/.test(S.toast), 'an attack on your city raises a notification')
+ok(played.filter(i => i === HORN).length === 1,
+  'the horn sounds once for it, not once a tick')
+ok(!S.fx.some(f => f.k === 1), 'a siege draws no clash marker — there is nobody to fight')
+ok(!made[CLASH].paused, 'but the din runs for it all the same')
 ok(/under attack/.test(els.toast.innerHTML), 'and the toast renders')
 ok(S.C[town].wn === 1, 'the city is flagged so it is not announced twice')
 
@@ -330,8 +387,11 @@ S.C[prey].u = 0
 
 // run to a conclusion
 S.speed = 8
+played.length = 0
 for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
+ok(played.includes(FANFARE) === (S.over > 0), 'the fanfare sounds on a win and only on a win')
+ok(made[CLASH].paused, 'and the din stops with the game')
 ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
 ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
 ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
@@ -339,6 +399,23 @@ const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Horns of Dominion'), 'restart returns to the title')
 ok(S.seed !== seedWas && location.hash === '#' + S.seed, 'restart rerolls the map and publishes the seed')
+
+// --- the other ending, forced ----------------------------------------------
+// a natural run reaches exactly one of the two, so the fanfare check above is
+// only ever half a test. take the whole board and the other half runs too
+played.length = 0
+click('s', S.me)
+ok(!played.includes(CHIME) && played.includes(SONG),
+  'picking a realm brings the song up and does not chime under it')
+step(2)
+S.C.forEach(c => { c.o = S.me })
+S.fx = [{ x: S.C[0].x, y: S.C[0].y, k: 1, l: 1 }]   // and a fight still on screen
+played.length = 0
+S.speed = 8
+step(4, 100)
+ok(S.over > 0, 'holding every city wins')
+ok(played.includes(FANFARE), 'and the fanfare sounds for it')
+ok(made[CLASH].paused, 'while the din stops even with a clash still drawn')
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

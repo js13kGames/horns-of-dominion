@@ -1,11 +1,11 @@
 import { S, applyDiff } from './state.js'
 import { genMap } from './map.js'
-import { tick, order, seeArmy, active } from './sim.js'
+import { tick, order, seeArmy, active, fighting } from './sim.js'
 import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
 import { paint } from './terrain.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
-import { grind, music, mute } from './audio.js'
+import { grind, music, mute, chime, fanfare, clash } from './audio.js'
 
 const TICK = 0.5          // seconds of real time per tick at 1×
 let acc = 0, last = 0, playing = 0
@@ -38,9 +38,11 @@ function frame (ts) {
     while (acc >= TICK && guard++ < 8) { acc -= TICK; tick(); ai() }
     S.alpha = Math.min(1, acc / TICK)
     if (S.toastT > 0 && (S.toastT -= dt) <= 0) S.toast = ''
-    if (S.over) ending()
+    if (S.over) { ending(); if (S.over > 0) fanfare() }   // the din stops itself below
   }
   draw(dt)
+  // the din is derived, like the fog — see fighting() in sim.js
+  clash(playing && !S.over && fighting())
   const cur = active() ? 'crosshair' : ''   // the cursor says the map is armed
   if (cv.style.cursor !== cur) cv.style.cursor = cur
   ui()
@@ -63,11 +65,12 @@ cv.addEventListener('pointerdown', e => {
   const act = active()
   if (act) {                            // a warband is up: the map is its order sheet
     const to = hc >= 0 ? hc : ha && ha.t < 0 ? ha.a : -1   // a city, or a host resting on one
-    if (to >= 0) order(act, to)
+    if (to >= 0) { order(act, to); chime() }
     else S.sel = null                   // anywhere else stands it down
     return ui()
   }
   S.sel = ha ? { k: 'a', i: ha.id } : hc >= 0 ? { k: 'c', i: hc } : null
+  if (S.sel) chime()
   ui()
 })
 

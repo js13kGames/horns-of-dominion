@@ -1,6 +1,6 @@
 import { S, T, D } from './state.js'
 import { REALMS } from './map.js'
-import { mute, muted } from './audio.js'
+import { mute, muted, chime } from './audio.js'
 import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity } from './sim.js'
 
 const $ = id => document.getElementById(id)
@@ -103,6 +103,9 @@ addEventListener('click', e => {
   const el = e.target.closest('[data-a]')
   if (!el) return
   const a = el.dataset.a, i = +el.dataset.i
+  // every button that commits to something. not the realm card: the song comes
+  // up over it and the chime is inaudible under it
+  if ('rgxfdv'.includes(a)) chime()
   if (a === 'r') raise(i, S.me)
   else if (a === 'g') raise(i, S.me, S.C[i].sp)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)

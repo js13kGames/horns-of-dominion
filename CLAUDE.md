@@ -135,9 +135,24 @@ The sign of `T.stir` is load-bearing: a native realm down to `T.dying` cities or
 
 ### Audio
 
-`src/player.js` is SoundBox's `player-small.js`, altered in exactly two ways — `CPlayer` exported as a module binding, and the unused `getData()` deleted. zlib licence: keep the copyright header, and if you alter it further, say so in the ALTERED SOURCE notice at the top. Arpeggio is dead code for the current song but deliberately kept: it costs 16 B, and sound effects are the thing likely to want it.
+`src/player.js` is SoundBox's `player-small.js`, altered in exactly two ways — `CPlayer` exported as a module binding, and the unused `getData()` deleted. zlib licence: keep the copyright header, and if you alter it further, say so in the ALTERED SOURCE notice at the top. Arpeggio was dead code for a while and kept anyway on the bet that a sound effect would want it; the sword clash does (`ARP_CHORD 1`, `ARP_SPEED 7`), so it is live now.
 
-`src/audio.js` grinds one instrument per frame from the render loop (~330 ms total, worst call ~117 ms) so the boot doesn't stall, and starts playback on realm selection, which is also the user gesture browsers require for autoplay. A `typeof Audio` guard keeps the headless harnesses out of it. The player's noise oscillator uses `Math.random()`, so **generated audio differs every run** — don't try to assert byte-identical output.
+`src/audio.js` grinds one instrument per frame from the render loop so the boot doesn't stall, and starts playback on realm selection, which is also the user gesture browsers require for autoplay. A `typeof Audio` guard keeps the headless harnesses out of it. The player's noise oscillator uses `Math.random()`, so **generated audio differs every run** — don't try to assert byte-identical output.
+
+`TRK` is the grind queue in fixed order — **0 song · 1 horn · 2 chime · 3 fanfare · 4 clash** — and `bank[]` is the rendered result at the same indices. The song is first because the title screen is what waits on it; the four effects (`src/sfx.js`, one instrument over one 32-row pattern each) cost one extra frame apiece after it. Two tracks loop and are reconciled by `play()`: the song, and the din of battle. The rest are fired by `shot()`, which rewinds only an element that has actually played — the `currentTime` setter used to throw on a pre-metadata element in older WebKit.
+
+The chime is on every button that commits to something (`'rgxfdv'.includes(a)` in `ui.js` — raise, specialist raise, split, mend, rung, speed) and on every map click that lands: a city, a host, or a destination for a host under command. **The realm card is the one deliberate exception** — `music(1)` fires on the same click and the song comes up over the chime, so it was inaudible and was removed. There is a test that fails if someone adds `s` back to that string.
+
+**The din of battle is derived, like the fog.** `main.js` runs `clash(playing && !S.over && fighting())` every frame. `fighting()` in `sim.js` is two terms, and both are needed:
+
+- `S.fx.some(f => f.k === 1)` — a clash marker on screen. This inherits the fog for free, because `sim.js` never pushed the marker for a fight the player cannot see.
+- `S.C.some((c, i) => besieged(i) && seeCity(i))` — **a siege has nobody to fight, so it draws no ⚔️ of its own.** `melee` only fires when `sides.length > 1`; a lone besieger chewing a wall would otherwise be silent. The `seeCity` half is not decoration — drop it and a siege inside the fog starts making noise, which `dom-test` catches.
+
+There is no "am I fighting" flag to keep in sync, and reintroducing one is the same regression as reintroducing a stored fog bit.
+
+**The effects are the only audio the harnesses cover, and they are covered properly.** `dom-test` stubs `Audio` alone — Node has `Blob` and `URL.createObjectURL` — so all five tracks are ground for real and a broken instrument row throws there rather than in the browser. Every one of those assertions is mutation-checked. Note that a natural `dom-test` run reaches exactly one of the two endings, which made the fanfare check half vacuous; the forced win at the end of the file is what makes it a test.
+
+`sfx.js` spells the three tonal instruments out in full even though they differ in four slots. Folding them into a shared array plus patches cost **20 B more**, because Roadroller models the near-identical rows better than the patch loop compresses. Measured; don't redo it.
 
 ### The UI is deliberately thin
 

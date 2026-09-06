@@ -421,6 +421,49 @@ identical and needed no re-run.
 
 +219 B zipped (12,403 -> 12,622).
 
+# Round 17
+add sound effects: battle-horn.js to go along the "you are under attack" notifications,
+confirm.js for actions like selecting a faction in the title screen and selecting to create a
+unit or selecting to inspect a town, sword-clashing.js should play continuously when there's a
+battle underway (similar to when the sword emojis effect is being shown?) and victory.js should
+play once, when the player wins.
+
+The four tracker exports are transcribed into src/sfx.js and queued behind the song in the same
+one-instrument-per-frame grind, so nothing new stalls the boot: TRK is 0 song, 1 horn, 2 chime,
+3 fanfare, 4 clash. Horn fires from the two "under attack" notices in sim.js, once each, on the
+same c.wn / a.wn latch that already stops the toast repeating. Chime fires on a city click and on
+every button that commits to something — realm, difficulty, raise, specialist raise, mend, split.
+Fanfare fires once from main.js when S.over > 0.
+
+remove confirm chime from selecting a realm (not audible, since music kicks in strong at the
+same time). Add confirm sfx to when a host is selected, when a destination is selected, and when
+the speed toggles are clicked. Add swords clashing also when a siege is underway
+
+Realm card dropped from the chime list ('rgxfsd' -> 'rgxfdv'), speed toggles added, and the map
+click now chimes on anything that lands: city, host, or destination. The realm exception is
+tested, so it does not creep back.
+
+The din of battle is derived, not stored — fighting() in sim.js, two terms. The ⚔️ marker
+inherits the fog for free, because sim.js never pushes one for a fight the player cannot see.
+The siege term had to be added separately: melee only fires when sides.length > 1, so a lone
+besieger chewing a wall draws no ⚔️ at all and was silent. Its seeCity half is load-bearing —
+without it a siege inside the fog starts making noise, and dom-test catches that. It loops at
+0.4 volume so it sits under the song; the sword pattern's own two silent leading rows give the
+loop a 0.2 s breath every 3.4 s, which reads as fighting rather than as a gap.
+
+dom-test now stubs Audio and grinds all five tracks for real — Node already has Blob and
+URL.createObjectURL — so a broken instrument row throws in the harness. Sixteen new assertions,
+all mutation-checked. One of them was vacuous at first: a natural run reaches only one of the two
+endings, so the fanfare check needed a forced win at the end of the file to test anything.
+Balance is byte-identical over 200 games at seed 1000, which it has to be — the wiring reads
+state and touches none.
+
+Spelling the three tonal instruments out in full beat folding them into a shared array plus
+patches by 20 B. Roadroller models the near-identical rows better than the patch loop compresses.
+
++369 B zipped (12,702 -> 13,071). The siege term and the extra chimes cost 10 B between them.
+
+
 # Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)

@@ -1,4 +1,5 @@
 import { S, T, WIN, NC, rnd, rf, dist, note, boom } from './state.js'
+import { horn } from './audio.js'
 
 let nextId = 1
 export const getArmy = id => S.A.find(a => a.id === id)
@@ -44,6 +45,10 @@ export const prog = a => a.t < 0 ? 1
 // discovered-state to store, reset, or keep in sync. geography always draws.
 const myAt = i => at(i).some(a => a.o === S.me)
 export const besieged = i => at(i).some(a => a.o !== S.C[i].o)
+// the din of battle, derived like the fog: a clash marker on screen, or a siege
+// in sight. a siege has nobody to fight, so it draws no ⚔️ of its own
+export const fighting = () => S.fx.some(f => f.k === 1) ||
+  S.C.some((c, i) => besieged(i) && seeCity(i))
 export const seeCity = i => {
   const c = S.C[i]
   return c.o === S.me || myAt(i) || c.n.some(j => S.C[j].o === S.me)
@@ -380,13 +385,13 @@ export function tick () {
   // 6c. tell the player when something of theirs comes under attack, once each
   for (let i = 0; i < NC; i++) {
     const c = S.C[i], hit = c.o === S.me && besieged(i)
-    if (hit && !c.wn) note('⚠️ ' + c.nm + ' is under attack!')
+    if (hit && !c.wn) { note('⚠️ ' + c.nm + ' is under attack!'); horn() }
     c.wn = hit ? 1 : 0
   }
   for (const a of S.A) {
     if (a.o !== S.me) continue
     const hit = !!a.eg && a.eg.some(id => { const b = getArmy(id); return b && b.o !== a.o })
-    if (hit && !a.wn) note('⚠️ Your warband is under attack!')
+    if (hit && !a.wn) { note('⚠️ Your warband is under attack!'); horn() }
     a.wn = hit ? 1 : 0
   }
 
