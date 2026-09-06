@@ -136,8 +136,17 @@ export function fix (i, f) {
 }
 
 const turn = a => { const b = a.a; a.a = a.t; a.t = b; a.pr = 1 - a.pr; a.st = 0 }
-// breaking contact is paid for in warriors; walking away from an empty road is free
-const flee = a => { a.w *= 1 - T.flee; turn(a) }
+// Breaking contact is paid for in warriors — once. `ep` is where the enemy is:
+// if they are still ahead, turning away is a real disengagement and costs T.flee.
+// If they are already behind, this host is mid-retreat and simply keeps walking.
+// Charging it again every tick used to `turn()` it back round each time, pinning
+// it in place while it bled a quarter of itself per tick until it died — 95 units
+// from an enemy it never reached.
+const flee = (a, ep) => {
+  const dir = a.a < a.t ? 1 : -1
+  if (ep === undefined || dir * (ep - along(a, a.pr)) > 0) { a.w *= 1 - T.flee; turn(a) }
+  else a.st = 0                                  // already running; let it run
+}
 // strength on each side of a fight, so a host can judge whether staying is madness
 const odds = g => {
   const pow = {}, o = afield(g)
@@ -216,18 +225,35 @@ function roads () {
     for (let i = 0; i < g.length;) {
       let j = i
       while (j + 1 < g.length && pos[j + 1] - pos[j] <= T.reach) j++
-      const cl = g.slice(i, j + 1)
+      // The chain above finds *where* a brawl is; it must not decide who is in it.
+      // Growing it while consecutive gaps are <= T.reach let six hosts spaced 18
+      // apart span 95 units, locking one 95 from the enemy into the melee. In the
+      // fight = within reach of an enemy, plus friends within reach of those, so
+      // arrivals still join (they halt T.reach * 0.9 behind their own front rank).
+      const hot = []
+      for (let u = i; u <= j; u++)
+        if (g.some((b, v) => v >= i && v <= j && b.o !== g[u].o &&
+          Math.abs(pos[u] - pos[v]) <= T.reach)) hot.push(g[u])
+      const cl = hot.length
+        ? g.slice(i, j + 1).filter(a => hot.includes(a) ||
+            hot.some(b => b.o === a.o && Math.abs(along(a, a.pr) - along(b, b.pr)) <= T.reach))
+        : []
       if (new Set(cl.map(a => a.o)).size > 1) {
         melee(cl, 0, -1)
         const ids = cl.map(z => z.id)
         for (const a of cl) { a.st = 1; a.eg = ids }
         const li = Math.min(cl[0].a, cl[0].t), hj = Math.max(cl[0].a, cl[0].t)
         const lo = S.C[li], hi = S.C[hj], vis = seeRoad(li, hj)
-        const f = (pos[i] + pos[j]) / 2 / dist(lo, hi)
+        const ap = cl.map(z => along(z, z.pr))
+        const f = (Math.min(...ap) + Math.max(...ap)) / 2 / dist(lo, hi)
         if (vis) boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
         shattered(cl, vis)
         const losing = odds(cl)                // an outmatched AI host turns and runs
-        for (const a of cl) if (S.F[a.o].ai && a.w > 0.5 && losing(a)) flee(a)
+        for (const a of cl) {
+          if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
+          const foes = cl.filter(b => b.o !== a.o)
+          flee(a, foes.reduce((n, b) => n + along(b, b.pr), 0) / foes.length)
+        }
       }
       i = j + 1
     }

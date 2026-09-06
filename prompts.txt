@@ -464,6 +464,30 @@ patches by 20 B. Roadroller models the near-identical rows better than the patch
 +369 B zipped (12,702 -> 13,071). The siege term and the extra chimes cost 10 B between them.
 
 
+# Round 18
+I detected some issues with trying to flee when many warbands involved, probably an issue with
+distance check
+
+Two bugs, feeding each other. (1) Road clustering grew while *consecutive* gaps were <= T.reach,
+so six hosts spaced 18 apart chained into one cluster spanning 95 units and the rearmost was
+locked into a melee 5.3x reach from any enemy. (2) The AI re-fled every tick it was losing and
+flee() called turn() each time, so a host flipped orientation every tick, netted no displacement,
+and paid a quarter of itself per tick until it died: 20 warriors to 4 in seven ticks, 95 units
+from an enemy it never touched, while that enemy lost 2 of 400.
+
+Fixed: membership is now within T.reach of an enemy plus friends within reach of those, and
+flee(a, ep) charges only when the enemy is still ahead. Both have mutation-checked regression
+tests in road-test.mjs.
+
+The cost, honestly: the bug had been inflating road combat, since losing hosts dissolved instead
+of retreating. p50/p90 unmoved, but seed 1000 gained 1 stalemate and 2 games over 24k, and the
+unicorn realms lost ground (dragon realms 147/126 v unicorn 100/104/122 over 600 games) because
+an ambush that no longer annihilates its victim is worth less. Accepted — a host that retreats
+should not dissolve.
+
++113 B zipped (13,071 -> 13,184). 128 B of headroom left, which is the
+tightest this has been.
+
 # Pending topics
 1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
 2. Add harmony score (warring too much tires your population)

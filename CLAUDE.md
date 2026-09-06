@@ -125,6 +125,16 @@ The triangle **inverts with the ground**. On a road, unicorns break footmen, foo
 
 Kinds refuse to merge, so a node can hold three of your hosts. Two consequences: `spot()` in `render.js` fans by owner *and* kind — sideways across the faction slot, never outward along the spoke, because a host's strength number hangs 18px under its disc and would land on the disc behind it — and the hit test in `main.js` collects every host in range and cycles rather than taking the first.
 
+### Road contact, and the flee toll
+
+Two bugs lived here together and fed each other. Both have regression tests in `road-test.mjs`, mutation-checked.
+
+**The chain finds the brawl; it must not decide who is in it.** Clustering grows while *consecutive* gaps are `<= T.reach`, so six hosts spaced 18 apart chained into one cluster spanning **95 units** and the rearmost was locked into a melee 5.3x reach away from any enemy. Membership is now: within `T.reach` of an enemy, plus friends within `T.reach` of one of those. Arrivals still join, because the movement walk halts a host `T.reach * 0.9` behind its own front rank. Span is bounded at roughly `2 * T.reach` either side of contact instead of unbounded.
+
+**`T.flee` is charged once, not once a tick.** The AI re-flees every tick it is losing, and `flee()` called `turn()` each time — so a host flipped orientation every tick, netted nearly zero displacement, and paid a quarter of itself per tick until it died. Measured: 20 warriors down to 4 in seven ticks, 95 units from an enemy it never touched, while that enemy lost 2 of 400. `flee(a, ep)` now takes where the enemy is: still ahead means a real disengagement and costs `T.flee`; already behind means the host is mid-retreat and just keeps walking (`st = 0`). The player's own retreat through `order()` passes no `ep` and always pays, which is right — it is one deliberate act, and `turn()` swaps the endpoints so a second click is a march order, not a second toll.
+
+**What fixing it cost, measured.** The bug had been *inflating* the value of road combat: losing hosts dissolved on the spot instead of retreating, so every skirmish was decisive. With retreats surviving, 300 games a range gives p50 4233/4020 and p90 7152/6732 — the core is unmoved — but seed 1000 gained **1 stalemate and 2 games over 24k** (game 77, realms 0 and 1 frozen at 11 cities against 9), and that game was inside the previously-clean 200-game sample, so the fix caused it. Two evenly matched realms can now grind without either army ever breaking. The unicorn realms also lost ground (600 games: dragon realms 147/126, unicorn realms 100/104/122 against 120 expected) because an ambush that no longer annihilates its victim is worth less. Both are accepted: a host that retreats should not dissolve, and the alternative is a mechanic that lies to the player.
+
 ### Civil unrest
 
 Each city carries one number, `u` (0–100), plus `na`, the realm it was drafted into. `u` is nothing at all while `na` holds the city; the moment anyone else takes it, `u` jumps to `T.seize` (never downward — a second captor inherits whatever the first earned). It then moves on its own slow clock, `T.slow` ticks apart, which is the only place in `tick()` that is not per-tick.
