@@ -375,5 +375,47 @@ const pacify = k => {
 }
 ok(pacify(0) === pacify(2) && pacify(0) < T.seize, 'a garrison puts unrest down by boots, not by kind')
 
+// --- 10. a fight at a city is a fight; a siege is what happens after --------
+// the city's Defense is spent on the siege and nowhere else, so two hosts
+// standing on it trade exactly as they would on the road outside
+const nodeFight = d => {
+  fresh()
+  const i = S.C.findIndex(c => c.o === 0)
+  S.C[i].d = d; S.C[i].s = S.C[i].m
+  S.A = [put(1201, 0, 100, i, -1), put(1202, 1, 100, i, -1)]
+  for (let z = 0; z < 40; z++) tick()
+  return S.A.filter(a => a.id > 1200).map(a => a.id + ':' + a.w.toFixed(6)).join(' ')
+}
+const weak = nodeFight(2), strong = nodeFight(10)
+ok(/1201:\d/.test(weak) && /1202:\d/.test(weak), 'both hosts are still standing after 40 ticks')
+ok(weak === strong,
+  `Defense 2 and Defense 10 leave the identical fight (${weak})`)
+
+// but it is exactly what a siege is fought against
+const blood = d => {
+  fresh()
+  const i = S.C.findIndex(c => c.o !== 0)
+  S.C[i].d = d; S.C[i].s = S.C[i].m
+  S.A = [put(1203, 0, 200, i, -1)]
+  for (let z = 0; z < 20; z++) tick()
+  const a = getArmy(1203)
+  return a ? a.w : 0
+}
+const b2 = blood(2), b10 = blood(10)
+ok(b10 < b2, `a stouter city bleeds its besiegers harder (${b2.toFixed(1)} left v ${b10.toFixed(1)})`)
+
+// and no wall is touched while there is still somebody to fight
+fresh()
+const keep = S.C.findIndex(c => c.o !== 0)
+S.C[keep].s = S.C[keep].m
+const wall0 = S.C[keep].s
+S.A = [put(1204, 0, 200, keep, -1), put(1205, S.C[keep].o, 200, keep, -1)]
+for (let z = 0; z < 5; z++) tick()
+ok(S.C[keep].s === wall0, 'a defended city takes no wall damage at all')
+ok(getArmy(1204) && getArmy(1205), 'while both hosts are still there')
+S.A = S.A.filter(a => a.id !== 1205)
+for (let z = 0; z < 5; z++) tick()
+ok(S.C[keep].s < wall0, 'the siege starts only once there is nobody left to fight')
+
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

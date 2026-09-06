@@ -183,20 +183,18 @@ export function order (a, j) {
 
 // ---- combat --------------------------------------------------------------
 // one resolver for every fight. each host swings at a randomly chosen enemy
-// host; damage is banked and applied together, so resolution order never matters
-function melee (g, gd, gf) {
+// host; damage is banked and applied together, so resolution order never matters.
+// The city never joins in: a fight between hosts standing on it is the same fight
+// it would be on the road outside, less the speed layers `afield` gates. A city
+// spends its defence on the siege, and only once there is nobody left to fight.
+function melee (g) {
   const hit = new Map(), o = afield(g)
   const hurt = (x, d) => hit.set(x, (hit.get(x) || 0) + d)
-  const foesOf = f => g.filter(b => b.o !== f)
   for (const a of g) {
-    const foes = foesOf(a.o)
+    const foes = g.filter(b => b.o !== a.o)
     if (!foes.length) continue
     const t = foes[(rnd() * foes.length) | 0]
     hurt(t, T.atk * strike(a, t, o) * rf(0.8, 1.2))
-  }
-  if (gd) {                                    // the city garrison joins in
-    const foes = foesOf(gf)
-    if (foes.length) hurt(foes[(rnd() * foes.length) | 0], gd)
   }
   for (const [a, d] of hit) a.w -= d
 }
@@ -239,7 +237,7 @@ function roads () {
             hot.some(b => b.o === a.o && Math.abs(along(a, a.pr) - along(b, b.pr)) <= T.reach))
         : []
       if (new Set(cl.map(a => a.o)).size > 1) {
-        melee(cl, 0, -1)
+        melee(cl)
         const ids = cl.map(z => z.id)
         for (const a of cl) { a.st = 1; a.eg = ids }
         const li = Math.min(cl[0].a, cl[0].t), hj = Math.max(cl[0].a, cl[0].t)
@@ -321,7 +319,7 @@ export function tick () {
     const sides = [...new Set(here.map(a => a.o))]
 
     if (sides.length > 1) {
-      melee(here, sides.includes(c.o) ? c.d * 0.5 : 0, c.o)
+      melee(here)
       const ids = here.map(z => z.id)
       for (const a of here) { a.eg = ids; a.sg = sides.includes(c.o) ? i : -1 }
       const vis = seeCity(i)
