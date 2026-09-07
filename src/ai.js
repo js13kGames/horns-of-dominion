@@ -32,7 +32,7 @@ function step (f, F) {
 
   // muster — bounded, and never at the expense of marching
   // the ceiling counts gold spent, in footman-equivalents, not bodies and not
-  // fighting strength. bodies let a dragon realm field 2.2x the power for the
+  // fighting strength. bodies let a behemoth realm field 2.2x the power for the
   // same cap; strength let a cheap flyer realm field 1.67x the bodies. either
   // way the board inflates and wars drag. price is the one measure that doesn't
   const host = S.A.reduce((n, a) => n + (a.o === f ? a.w * T.K[a.k][3] / T.K[0][3] : 0), 0)

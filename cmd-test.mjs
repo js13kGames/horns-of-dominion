@@ -250,7 +250,7 @@ const crossing = k => {
   return z
 }
 const cR = crossing(0), cP = crossing(1), cD = crossing(2)
-ok(cP < cR && cR < cD, `unicorns outpace footmen outpace dragons (${cP}/${cR}/${cD} ticks)`)
+ok(cP < cR && cR < cD, `unicorns outpace footmen outpace behemoths (${cP}/${cR}/${cD} ticks)`)
 ok(Math.abs(cR / cP - T.K[1][2]) < 0.15, `the gap tracks the table (${(cR / cP).toFixed(2)}x vs ${T.K[1][2]}x)`)
 ok(Math.abs(cD / cR - 1 / T.K[2][2]) < 0.15, `at both ends (${(cD / cR).toFixed(2)}x vs ${(1 / T.K[2][2]).toFixed(2)}x)`)
 
@@ -264,9 +264,9 @@ const road = (ka, kb) => {
   return S.A.length === 1 ? S.A[0].o : -1
 }
 ok(road(1, 0) === 0, 'on a road unicorns break footmen')
-ok(road(0, 2) === 0, 'footmen break dragons')
-ok(road(1, 2) === 0, 'and unicorns maul dragons worst of all — the slowest thing there is')
-ok(road(2, 1) === 1, 'a dragon never wins that one by turning it around')
+ok(road(0, 2) === 0, 'footmen break behemoths')
+ok(road(1, 2) === 0, 'and unicorns maul behemoths worst of all — the slowest thing there is')
+ok(road(2, 1) === 1, 'a behemoth never wins that one by turning it around')
 
 // wall power: the same hundred warriors, three very different sieges
 const breach = k => {
@@ -279,7 +279,7 @@ const breach = k => {
   return z
 }
 const bD = breach(2), bR = breach(0), bP = breach(1)
-ok(bD < bR && bR < bP, `dragons breach fastest, unicorns slowest (${bD}/${bR}/${bP} ticks)`)
+ok(bD < bR && bR < bP, `behemoths breach fastest, unicorns slowest (${bD}/${bR}/${bP} ticks)`)
 ok(bP > bR * 2, 'unicorns are no siege engine at all')
 
 // kinds keep their own company
@@ -287,13 +287,13 @@ fresh()
 k = S.C.findIndex(c => c.o === 0)
 S.A = [put(1131, 0, 50, k, -1, 0), put(1132, 0, 50, k, -1, 2)]
 tick()
-ok(S.A.length === 2, 'footmen and dragons sharing a city do not pool')
+ok(S.A.length === 2, 'footmen and behemoths sharing a city do not pool')
 S.A = [put(1133, 0, 50, k, -1, 2), put(1134, 0, 50, k, -1, 2)]
 tick()
-ok(S.A.length === 1 && S.A[0].w === 100, 'two dragon warbands do')
+ok(S.A.length === 1 && S.A[0].w === 100, 'two behemoth warbands do')
 S.A = [put(1135, 0, 90, k, -1, 2)]
 split(S.A[0], 30)
-ok(S.A.length === 2 && S.A.every(a => a.k === 2), 'and splitting dragons yields dragons')
+ok(S.A.length === 2 && S.A.every(a => a.k === 2), 'and splitting behemoths yields behemoths')
 
 // the raise gate: footmen anywhere, the specialist only where it is bred
 fresh()
@@ -342,12 +342,12 @@ const clash = (k, road) => {
 // elite, so it buys few: it must earn its place by matchup, not by weight of numbers
 const forSameGold = k => Math.round(100 * T.K[0][3] / T.K[k][3])
 ok(forSameGold(1) < 100 && forSameGold(2) < 100,
-  `💎 for 100 footmen buys only ${forSameGold(1)} unicorns or ${forSameGold(2)} dragons`)
+  `💎 for 100 footmen buys only ${forSameGold(1)} unicorns or ${forSameGold(2)} behemoths`)
 ok(clash(1, 0) === 1, 'so few unicorns lose to footmen at a city')
-ok(clash(2, 1) === 1, 'and so few dragons lose to them on the road')
+ok(clash(2, 1) === 1, 'and so few behemoths lose to them on the road')
 // because damage comes off `w`, body count IS hit points here: a half-sized host
 // of double-strength warriors trades evenly on output and dies twice as fast. The
-// dragon's edge is the siege, where losses are T.sgLoss * c.d whatever you are
+// behemoth's edge is the siege, where losses are T.sgLoss * c.d whatever you are
 const raze = k => {
   fresh()
   const c = S.C.findIndex(x => x.o !== 0)
@@ -358,11 +358,11 @@ const raze = k => {
   return z
 }
 const rzR = raze(0), rzD = raze(2), rzP = raze(1)
-ok(rzD < rzR && rzR < rzP, `for the same 💎, dragons breach fastest (${rzD}/${rzR}/${rzP} ticks)`)
+ok(rzD < rzR && rzR < rzP, `for the same 💎, behemoths breach fastest (${rzD}/${rzR}/${rzP} ticks)`)
 ok(rzP > rzR, 'and flyers slowest — the road is theirs, the wall is not')
 const openMult = k => (1 + T.K[k][2]) / 2
 ok(openMult(1) > 1 && openMult(0) === 1 && openMult(2) < 1,
-  'speed is the open-field multiplier — flyers gain, footmen neutral, dragons pay')
+  'speed is the open-field multiplier — flyers gain, footmen neutral, behemoths pay')
 
 // pacification is boots on a populace — weighting it would move round 14's balance
 const pacify = k => {

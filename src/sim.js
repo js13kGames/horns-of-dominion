@@ -24,7 +24,7 @@ const along = (a, pr) => a.a < a.t ? pr * span(a) : (1 - pr) * span(a)
 export const pw = a => a.w * T.K[a.k][0]
 // a fight between cities is decided at the pace you march. A host's own speed is
 // its weight in the open — no matchup table needed, the counter falls out of the
-// movement rules: a dragon is slow, so it spends its life on roads being caught.
+// movement rules: a behemoth is slow, so it spends its life on roads being caught.
 // At a city speed buys nothing and this is 1: walls do not manoeuvre.
 // `g[0].t >= 0` separates the two — a road cluster is all marchers, a node all rest
 const afield = g => g[0].t >= 0
@@ -82,7 +82,7 @@ export function hop (from, to) {
 // One number per city: how badly its people want their own realm back. It only
 // moves while someone else holds the place, and a garrison is what holds it
 // down — in proportion to the size of the crowd being sat on. Deliberately
-// bodies, not `pw`: sitting on a populace is done with boots, and a dragon is
+// bodies, not `pw`: sitting on a populace is done with boots, and a behemoth is
 // not worth two footmen at it. Weighting this would move round 14's balance.
 const garrison = (i, f) => at(i).reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
 export const unrest = i => S.C[i].u >= T.calm

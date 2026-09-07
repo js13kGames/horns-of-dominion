@@ -160,7 +160,7 @@ export function genMap (sd) {
 
   // each realm breeds one specialist kind, at its capital and at its next
   // biggest city. it belongs to the place, not the owner: take the capital and
-  // you take the dragonpens with it. chosen without rnd() on purpose — spending
+  // you take the behemoth pens with it. chosen without rnd() on purpose — spending
   // randomness here would shift the whole game's stream and every balance number
   caps.forEach((k, f) => {
     C[k].sp = T.sp[f]

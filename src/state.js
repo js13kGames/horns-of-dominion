@@ -63,14 +63,14 @@ export const T = {
   // at every read site. footman is all 1.0 and priced as an army always was, so a
   // board with no specialist cities behaves numerically exactly like the old game.
   //   [field power, wall power, march speed, gold, pop, glyph]
-  //   0 footmen, raised anywhere · 1 unicorns, the flyer · 2 dragons, the ram.
+  //   0 footmen, raised anywhere · 1 unicorns, the flyer · 2 behemoths, the ram.
   // Glyphs must be *light*: a host is drawn on a near-black disc, so 🦅 and 🐎
   // came out as dark smudges at 13px and were rejected on looking at them.
-  // dragons are priced *below* footmen per point of field power (1.76 to 1.60).
+  // behemoths are priced *below* footmen per point of field power (1.76 to 1.60).
   // that pays for a drawback the AI cannot manage: it scores targets by adjacency
   // and never reads T.speed, so a slow host is pure cost to it. At footman parity
-  // its two dragon realms won 202 of 1200 games against the unicorn realms' 265.
-  K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐉']],
+  // its two behemoth realms won 202 of 1200 games against the unicorn realms' 265.
+  K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐘']],
   amb: 0.6,          // how hard a speed advantage bites in an open-field fight
   wing: 0.15,       // share of a realm's war chest it will keep in flyers, no more
   sp: [2, 1, 2, 1, 1] // the specialist each realm breeds, at its capital and one other city
