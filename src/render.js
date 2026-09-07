@@ -25,37 +25,40 @@ export const cityR = c => 13 + Math.min(c.p, 260) / 20
 const col = o => o < 0 ? '#6b6482' : S.F[o].c
 
 // where an army logically sits: lerped along its road with sub-tick progress,
-// or fanned around its node by owner. `sp` slides it sideways so hosts sharing
-// a road stay legible.
+// or fanned around its node inside its owner's slot. `sp` is the host's place
+// in its group, counted from the middle, and means px on a road and slots at a
+// node.
 function spot (a, sp) {
   const c = S.C[a.a]
   if (a.t >= 0) {
-    const d = S.C[a.t], L = Math.hypot(d.x - c.x, d.y - c.y) || 1, pr = prog(a)
+    const d = S.C[a.t], L = Math.hypot(d.x - c.x, d.y - c.y) || 1, pr = prog(a), o = sp * 13
     return {
-      x: c.x + (d.x - c.x) * pr - (d.y - c.y) / L * sp,
-      y: c.y + (d.y - c.y) * pr + (d.x - c.x) / L * sp
+      x: c.x + (d.x - c.x) * pr - (d.y - c.y) / L * o,
+      y: c.y + (d.y - c.y) * pr + (d.x - c.x) / L * o
     }
   }
-  // fan by owner around the city, and by kind across that slot. sideways, not
-  // outward: the strength number hangs 18px under its own disc, so stacking
-  // kinds along the spoke drops each label onto the disc behind it
-  const ang = a.o * 1.2566 - 1.9 + (a.k - 1) * 0.8, r = cityR(c) + 17
+  // fan by owner around the city, then across that slot by whoever else of
+  // theirs is resting here — three kinds that will not merge, or the halves of
+  // a split. sideways, not outward: the strength number hangs 18px under its
+  // own disc, so stacking along the spoke drops each label onto the disc behind
+  const r = cityR(c) + 17, ang = a.o * 1.2566 - 1.9 + sp * 26 / r
   return { x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }
 }
 
 // render position eases toward the logical one, which absorbs every jump the
 // simulation makes: arriving at a node, re-slotting a fan, merging a stack
 export function place (dt) {
-  const lane = {}
+  const grp = {}
   for (const a of S.A) {
-    if (a.t < 0) continue
-    const k = a.a < a.t ? a.a + ':' + a.t : a.t + ':' + a.a
-    ;(lane[k] || (lane[k] = [])).push(a)
+    // 'n' keeps a node key off a road key: city 5 of realm 2 is not the road 5-2
+    const k = a.t < 0 ? 'n' + a.a + ':' + a.o                    // resting: by owner
+      : a.a < a.t ? a.a + ':' + a.t : a.t + ':' + a.a            // marching: by road
+    ;(grp[k] || (grp[k] = [])).push(a)
   }
   const sp = new Map()
-  for (const k in lane) {
-    const g = lane[k].sort((x, y) => x.id - y.id)
-    g.forEach((a, i) => sp.set(a, (i - (g.length - 1) / 2) * 13))
+  for (const k in grp) {
+    const g = grp[k].sort((x, y) => x.id - y.id)
+    g.forEach((a, i) => sp.set(a, i - (g.length - 1) / 2))
   }
   const e = 1 - Math.pow(0.0015, dt)
   for (const a of S.A) {

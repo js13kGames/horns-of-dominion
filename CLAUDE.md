@@ -125,7 +125,9 @@ The triangle **inverts with the ground**. On a road, unicorns break footmen, foo
 
 The ~10% and the per-slot 10 / 25.5 / 14.5 / 18 / 32 % this note used to quote were **already stale** by the time they were cited — a re-measure on the code immediately before this change read 18.0%. Something between round 14 and round 18 had mostly fixed it and nobody re-ran the harness. Treat every number in this file as of its round, and re-measure before building on one.
 
-Kinds refuse to merge, so a node can hold three of your hosts. Two consequences: `spot()` in `render.js` fans by owner *and* kind — sideways across the faction slot, never outward along the spoke, because a host's strength number hangs 18px under its disc and would land on the disc behind it — and the hit test in `main.js` collects every host in range and cycles rather than taking the first.
+Kinds refuse to merge, so a node can hold three of your hosts. Two consequences: `spot()` in `render.js` fans them across the owner's slot — sideways, never outward along the spoke, because a host's strength number hangs 18px under its disc and would land on the disc behind it — and the hit test in `main.js` collects every host in range and cycles rather than taking the first.
+
+**The fan counts hosts, not kinds.** It used to key the sideways offset on `a.k`, which put the two halves of a split — same owner, same kind, same node — at exactly the same pixel, one disc and one number hiding the other. `place()` now groups every resting host by `node:owner`, sorts by id and hands `spot()` its place in that group counted from the middle; the node branch spends that as `sp * 26 / r` radians, which is 26px of arc whatever the city's size, so three kinds land where they always did and a split fans the same way. One map of slots serves both branches, so the keys must not collide — a node key carries an `'n'` prefix, or city 5 held by realm 2 would share a key with the road 5–2. Both rules have `dom-test` assertions, and the road key needs no `S.E` lookup: grouping reads a host's own endpoints.
 
 ### Fights at a city, and sieges
 

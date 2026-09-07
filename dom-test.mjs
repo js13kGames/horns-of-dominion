@@ -47,6 +47,7 @@ globalThis.Audio = class {
 
 const { S, T } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
+const { cityR } = await import('./src/render.js')
 await import('./src/main.js')
 
 const step = (n, ms = 16.7) => {
@@ -255,6 +256,24 @@ ok(S.split === 40, 'dragging the slider updates the split size')
 click('x', 0)
 ok(S.A.length === 2 && S.A[0].w + S.A[1].w === 120, 'splitting conserves warriors')
 ok(S.A.every(a => a.hold), 'both halves are held apart')
+// and they are held apart on the map too: same owner, same kind, same node, so
+// without a fan inside the owner's slot the new host lands exactly under the old
+S.speed = 0; step(30); S.speed = 1     // paused frames: the ease runs, the board does not
+const [u, v] = S.A, hc = S.C[home]
+ok(Math.hypot(u.rx - v.rx, u.ry - v.ry) > 20, 'the two halves take separate places around the city')
+ok([u, v].every(a => Math.abs(Math.hypot(a.rx - hc.x, a.ry - hc.y) - (cityR(hc) + 17)) < 4),
+  'both still ride the ring of their own city')
+// node slots and road slots come out of one map, so their keys must not collide:
+// city 0 held by realm 1 is not the road 0-1. no edge is needed for this — the
+// grouping reads a host's own endpoints, never S.E
+const stash = S.A
+S.A = [{ id: 5101, o: 1, w: 20, k: 0, a: 0, t: -1, pr: 0, st: 0, dst: -1, hold: 0 },
+  { id: 5102, o: 3, w: 20, k: 0, a: 0, t: 1, pr: 0.5, st: 0, dst: -1, hold: 0 }]
+step(1, 0)                             // a fresh host is placed outright, no easing
+const c0 = S.C[0], ra = 1 * 1.2566 - 1.9, rr = cityR(c0) + 17
+ok(Math.hypot(S.A[0].rx - (c0.x + Math.cos(ra) * rr), S.A[0].ry - (c0.y + Math.sin(ra) * rr)) < 4,
+  'a lone host keeps its own slot whatever marches the road of the same name')
+S.A = stash
 
 tap(h.rx, h.ry)
 tap(S.C[far].x, S.C[far].y)
