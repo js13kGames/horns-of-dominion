@@ -152,7 +152,6 @@ export function draw (dt) {
       x.globalAlpha = 1
     }
     label(c.nm, c.x, c.y + r + 16, 11, lit ? '#fff' : '#e8e4f5aa')
-    label(lit ? '👥' + (c.p | 0) + '  🛡' + (c.s | 0) : '🌫️', c.x, c.y + r + 28, 10, '#e8e4f588')
     if (sel && sel.k === 'c' && sel.i === i) {
       x.setLineDash([4, 4]); x.beginPath(); x.arc(c.x, c.y, r + 11, 0, 6.2832)
       x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke(); x.setLineDash([])

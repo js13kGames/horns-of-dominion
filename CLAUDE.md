@@ -182,7 +182,9 @@ There is no "am I fighting" flag to keep in sync, and reintroducing one is the s
 
 ### The UI is deliberately thin
 
-Almost everything a panel might report is already on the map: ownership is the ring colour, a host's strength is the number under it, `👥pop 🛡walls` is drawn under every city, and a march is its dashed path to a lit destination. The city panel carries only what the map cannot, and selecting a warband shows nothing but the split slider. Before adding a readout, check the map does not already say it.
+Almost everything a panel might report is already on the map: ownership is the ring colour, a host's strength is the number under it, the wall ring around a city is `c.s / c.m`, and a march is its dashed path to a lit destination. The city panel carries what the map does not, and selecting a warband shows nothing but the split slider. Before adding a readout, check the map does not already say it.
+
+**Populace and walls are the panel's, not the map's.** `👥pop 🛡walls` used to be drawn under every city, with `🌫️` in their place on a fogged one; that whole line is gone. The numbers are now `👥 Populace` and `🛡️ Walls` (`c.s | 0` against `c.m`, so mending has something to read against) in the city panel. The shield carries a **VS16**, like the `⚔️` a row below it: `U+1F6E1` defaults to *text* presentation, so without it the panel gets a monochrome outline where every other row label is a colour emoji. The bare `🛡` the map used got away with it because canvas resolves emoji through a different font stack. Nothing replaces the fog marker: a fogged city already greys its ring and name and answers `???` in the panel, so the 🌫️ was a third telling of the same thing. `dom-test` pins it: the panel reports the two numbers, and no canvas text under a city name contains `👥`, `🛡` or `🌫️`.
 
 ## Working here
 

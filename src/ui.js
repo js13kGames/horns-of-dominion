@@ -26,6 +26,8 @@ export function ui () {
     const c = S.C[s.i], own = c.o === S.me, lit = seeCity(s.i)
     const q = '<span style=opacity:.45>???</span>'
     set(pan, `<h3>${lit && c.cap ? '👑' : '🏰'} ${c.nm}</h3>` +
+      row('👥 Populace', lit ? c.p | 0 : q) +
+      row('🛡️ Walls', lit ? (c.s | 0) + ' / ' + c.m : q) +
       row('⚔️ Defense', lit ? c.d : q) +
       row('💎 Economy', lit ? c.e : q) +
       row('✊ Unrest', lit ? (c.u | 0) + '%' : q) +

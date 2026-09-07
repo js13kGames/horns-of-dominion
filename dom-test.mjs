@@ -10,7 +10,8 @@ const mk = id => {
   }
   return (els[id] = e)
 }
-const ctx = new Proxy({}, {
+const drew = []                                   // canvas text, so the map can be read
+const ctx = new Proxy({ fillText: t => (drew.push(String(t)), ctx) }, {
   get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)),   // gradients chain
   set: (t, k, v) => (t[k] = v, true)
 })
@@ -290,6 +291,17 @@ ok(/\?\?\?/.test(els.pan.innerHTML), 'a distant city hides its numbers')
 
 S.sel = { k: 'c', i: near }; step(1)
 ok(!/\?\?\?/.test(els.pan.innerHTML), 'a city bordering mine reports its numbers')
+
+// populace and walls are the panel's to report — the map used to carry them
+// under every city and carries nothing there now
+const nc = S.C[near]
+ok(els.pan.innerHTML.includes('👥 Populace</span><span>' + (nc.p | 0)),
+  'the panel reports the populace')
+ok(els.pan.innerHTML.includes('🛡️ Walls</span><span>' + (nc.s | 0) + ' / ' + nc.m),
+  'and what is left of the walls, against what they were')
+drew.length = 0; step(1)
+ok(drew.length > 0 && !drew.some(t => t.includes('👥') || t.includes('🛡') || t.includes('🌫️')),
+  'while the map draws nothing at all under the city name')
 
 // scouting is live: present a host, the fog lifts; withdraw, it closes
 const scout = { id: 6001, o: 2, w: 50, k: 0, a: dark, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }
