@@ -41,8 +41,9 @@ function frame (ts) {
     if (S.over) { ending(); if (S.over > 0) fanfare() }   // the din stops itself below
   }
   draw(dt)
-  // the din is derived, like the fog — see fighting() in sim.js
-  clash(playing && !S.over && fighting())
+  // the din is derived, like the fog — see fighting() in sim.js. a paused board
+  // is a still picture, so the loop stops with it: S.speed is the whole pause
+  clash(playing && !S.over && S.speed > 0 && fighting())
   const cur = active() ? 'crosshair' : ''   // the cursor says the map is armed
   if (cv.style.cursor !== cur) cv.style.cursor = cur
   ui()

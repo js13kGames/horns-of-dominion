@@ -339,10 +339,17 @@ ok(made[CLASH].paused, 'with no fight on screen the din is quiet')
 S.A = [host(7007, 3, near), host(7008, 4, near)]
 S.speed = 8; step(2, 100)
 ok(!made[CLASH].paused, 'a battle in sight starts it')
+// pausing is a still picture — no ticks run, so the fight the marker records is
+// not happening either. paused frames cost the board nothing, so this samples
+// the same fight rather than staging a second one
+S.speed = 0; step(2)
+ok(S.fx.some(f => f.k === 1), 'pausing leaves the clash marker on screen')
+ok(made[CLASH].paused, 'but the din stops while the game is paused')
+S.speed = 8; step(1, 0)   // a frame of no elapsed time: the sim is untouched
+ok(!made[CLASH].paused, 'and comes back when the board runs again')
 S.A = [host(7009, 3, dark), host(7010, 4, dark)]
 S.fx = []; step(2, 100)
 ok(made[CLASH].paused, 'the same battle in the fog does not')
-S.A = []; S.fx = []; S.speed = 1
 
 // --- being attacked is announced ------------------------------------------
 const town = S.C.findIndex(c => c.o === S.me)
