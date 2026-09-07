@@ -110,13 +110,21 @@ export function draw (dt) {
         x.fillStyle = '#ffffff12'; x.fill()
       }
       if (a.dst >= 0) {                                // the road still to walk
-        let at = a.t >= 0 ? a.t : a.a, n = 0
+        let at = a.t >= 0 ? a.t : a.a, n = 0, p = { x: a.rx, y: a.ry }
+        // each leg rides 6px off its own road, on the left of the march: dashes
+        // laid straight on the road were lost in it, and a plain vertical offset
+        // would put a north-south leg right back on top of the one road it hides
+        const leg = q => {
+          const L = Math.hypot(q.x - p.x, q.y - p.y) || 1
+          const ox = (p.y - q.y) / L * 6, oy = (q.x - p.x) / L * 6
+          x.moveTo(p.x + ox, p.y + oy); x.lineTo(q.x + ox, q.y + oy); p = q
+        }
         x.setLineDash([2, 6]); x.lineWidth = 2; x.strokeStyle = '#e8e4f5aa'
-        x.beginPath(); x.moveTo(a.rx, a.ry); x.lineTo(S.C[at].x, S.C[at].y)
+        x.beginPath(); leg(S.C[at])
         while (at !== a.dst && n++ < 20) {
           const h = hop(at, a.dst)
           if (h < 0) break
-          x.lineTo(S.C[h].x, S.C[h].y); at = h
+          leg(S.C[h]); at = h
         }
         x.stroke(); x.setLineDash([])
         const d = S.C[a.dst]

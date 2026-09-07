@@ -11,8 +11,14 @@ const mk = id => {
   return (els[id] = e)
 }
 const drew = [], drewAt = []                      // canvas text, so the map can be read
+let path = []                                     // and its strokes, so lines can be too
+const strokes = []
 const ctx = new Proxy({
-  fillText: (t, px, py) => (drew.push(String(t)), drewAt.push([String(t), px, py]), ctx)
+  fillText: (t, px, py) => (drew.push(String(t)), drewAt.push([String(t), px, py]), ctx),
+  beginPath: () => (path = [], ctx),
+  moveTo: (px, py) => (path.push([px, py]), ctx),
+  lineTo: (px, py) => (path.push([px, py]), ctx),
+  stroke: () => (strokes.push([ctx.strokeStyle, path.slice()]), ctx)
 }, {
   get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)),   // gradients chain
   set: (t, k, v) => (t[k] = v, true)
@@ -278,6 +284,17 @@ S.A = stash
 tap(h.rx, h.ry)
 tap(S.C[far].x, S.C[far].y)
 ok(h.dst === far && h.t >= 0 && h.t !== far, 'mobilizing to a far city sets a multi-hop march')
+// the dashed path rides beside the road, not down the middle of it: laid straight
+// on the road it was lost in it. 6px to the left of the march, leg by leg
+strokes.length = 0; step(1, 0)
+const march = strokes.find(([c]) => c === '#e8e4f5aa')
+ok(march && march[1].length >= 2, 'the march draws a path of its own')
+// measured square to the road, which is the only offset that survives a road of
+// any angle — a plain vertical nudge collapses to nothing on a north-south leg
+const fr = S.C[h.a], to = S.C[h.t], [px, py] = march[1][1]
+const L = Math.hypot(to.x - fr.x, to.y - fr.y)
+const off = Math.abs((to.x - fr.x) * (fr.y - py) - (fr.x - px) * (to.y - fr.y)) / L
+ok(Math.abs(off - 6) < 0.5, `and it clears the road it follows by 6px (${off.toFixed(1)})`)
 step(3)
 ok(h.dst === far && h.t >= 0, 'and keeps heading for it leg by leg')
 

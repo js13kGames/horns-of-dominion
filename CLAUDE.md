@@ -77,6 +77,8 @@ Three things are deliberately **pure functions of the current board**, with noth
 
 Because fog touches nothing in the simulation, `sim-test.mjs` must return **numerically identical** results before and after any fog change. That invariant is the strongest available proof of non-interference — use it.
 
+**The march path rides beside its road, not down it.** The dashed line to a lit destination used to be laid exactly on the road, in the same 2px stroke, so the thing the player most needs to follow was the thing hardest to see. Each leg is now offset 6px square to *its own* direction — left of the march — which is the only offset that holds at any road angle; a plain vertical nudge collapses to nothing on a north-south leg, and that is the case `dom-test` measures (perpendicular distance from the road line, not distance from the city). The test reads it off a recording of the canvas path ops, keyed on the path's own `#e8e4f5aa` stroke.
+
 ### Commanding warbands
 
 Click one of your hosts and it is under command (the canvas cursor becomes a crosshair). Click a city and it marches there, staying under command so the order can be redirected. Click anywhere else and it stands down. There are no movement buttons.
