@@ -10,8 +10,10 @@ const mk = id => {
   }
   return (els[id] = e)
 }
-const drew = []                                   // canvas text, so the map can be read
-const ctx = new Proxy({ fillText: t => (drew.push(String(t)), ctx) }, {
+const drew = [], drewAt = []                      // canvas text, so the map can be read
+const ctx = new Proxy({
+  fillText: (t, px, py) => (drew.push(String(t)), drewAt.push([String(t), px, py]), ctx)
+}, {
   get: (t, k) => (k in t ? t[k] : (t[k] = () => ctx)),   // gradients chain
   set: (t, k, v) => (t[k] = v, true)
 })
@@ -275,6 +277,27 @@ ok(els.pan.innerHTML === '', 'and an enemy host gets no panel at all')
 S.sel = { k: 'a', i: 5002 }; step(1)
 const eng = S.A.find(a => a.id === 5002)
 ok(eng && eng.eg && eng.eg.length >= 2, 'and the engagement is recorded, so the map can ring it')
+
+// --- the raise badge -------------------------------------------------------
+// the map says which of your cities could raise something this instant, so the
+// answer does not cost a click on each one. it is your own cities only, and
+// canRaise already checks the owner, so there is nothing to leak
+const pc = S.C[plain], keep = [S.F[S.me].g, pc.p, pc.mu, pc.oc, pc.u]
+S.F[S.me].g = 999; pc.p = 200; pc.mu = pc.oc = pc.u = 0
+// badges hang off the disc, so match on where the text landed, not just that it did
+const badgeOn = (t, c) => drewAt.some(d =>
+  d[0] === t && Math.abs(d[1] - c.x) < 40 && Math.abs(d[2] - c.y) < 40)
+const sample = () => { drew.length = drewAt.length = 0; step(1, 0) }   // no elapsed time: no tick runs
+sample()
+ok(badgeOn('⬆️', pc), 'a city that can raise says so on the map')
+S.F[S.me].g = 0
+sample()
+ok(drew.length > 0 && !drew.includes('⬆️'),
+  'with nothing of mine affordable the badge is nowhere — enemy cities never wear it')
+S.F[S.me].g = 999; pc.mu = T.muster
+sample()
+ok(badgeOn('⏳', pc) && !badgeOn('⬆️', pc), 'a city mid-muster wears the hourglass instead')
+;[S.F[S.me].g, pc.p, pc.mu, pc.oc, pc.u] = keep
 
 // --- fog of war ------------------------------------------------------------
 S.speed = 0                            // freeze the board so the fog is deterministic

@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active, canRaise } from './sim.js'
 import { blit } from './terrain.js'
 
 export const cv = document.getElementById('cv')
@@ -144,6 +144,8 @@ export function draw (dt) {
     }
     if (lit && unrest(i)) label('✊', c.x - r - 6, c.y - r - 2, 12)   // still being pacified
     if (lit && c.sp) label(T.K[c.sp][5], c.x + r + 6, c.y + r + 1, 12)   // breeds these
+    // mirrors the specialist badge: this one can raise something right now
+    if (canRaise(i, S.me) || (c.sp && canRaise(i, S.me, c.sp))) label('⬆️', c.x - r - 6, c.y + r + 1, 12)
     if (lit && besieged(i)) {                  // a city under attack keeps pulsing
       const q = 0.5 + 0.5 * Math.sin(S.elapsed * 6)
       x.globalAlpha = 0.25 + q * 0.55
