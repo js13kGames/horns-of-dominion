@@ -177,6 +177,22 @@ Per check, a conquered city gathers `T.stir` and its occupier puts down `T.pace`
 
 The sign of `T.stir` is load-bearing: a native realm down to `T.dying` cities or fewer *rallies nobody*, so its lost cities calm instead of stirring and no revolt fires for it. Without that, revolts keep handing a crumbling rump fresh cities, it never falls below `T.dying`, and the game will not end — that showed up as a single 57k-tick game in a 400-game run while the p50 barely moved.
 
+### Conscription
+
+**The populace the panel shows is the populace you can conscript.** `canRaise` has no floor beyond the muster's own price: `c.p >= T.K[k][4]`, and `T.minPop` (a flat 55) is gone. A city drawn at `ri(40, 200)` in `genMap` can therefore raise from the first tick instead of waiting to grow past 55, and a city can be drafted down to almost nobody — 👥200 yields five footmen musters and leaves 6 behind. What stops you is gold and `T.muster`, not a reserve the city insists on keeping.
+
+Nothing else in the sim reads `c.p` as a threshold, which is why this was a two-line change: **income is `c.e`, not population** (`e * T.inc` per tick), pop regrows toward `100 + c.e * 10` at `T.grow` regardless of how low it went, and the one other place `c.p` appears is the unrest hold, `min(1, garrison / (c.p * T.hold))` — where a drained city is *easier* to hold, not harder. The AI's target score reads `c.p / 60`, so it also values a stripped city less. `cmd-test` section 9 pins the new gate exactly on the price, one body either side of it, and drains a city to prove there is no floor left; putting any floor back fails four assertions.
+
+**What it bought, measured** (400 games × three seed ranges at rung 2, `diff-test` either side; before is the commit immediately prior). Games get shorter and the tail comes in, because armies are available when the gold is:
+
+| seed | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| 1000 | 4238→4073 | 7094→6633 | 12064→11867 | 13936→15139 |
+| 5000 | 4212→**3948** | 6788→**6158** | 11174→**8919** | 18638→**11426** |
+| 9000 | 4183→4084 | 7054→6859 | 10357→10741 | 18376→**13255** |
+
+0 stalemates and 0 games over 24k on all six runs. Win spread tightened in every range (61–112 → 66–102, 67–93 → 72–89, 63–97 → 62–95), and realm slot 0's rung-2 excess — the one the home-ground round could not attribute — came down with it, 302 → 283 of 1200. **`diff-test` got both fairer and steeper: 0 / 15.5 / 57.0 / 76.0 → 0 / 20.5 / 61.5 / 80.5**, the fair Duelist rung landing back on 20%. Removing the floor also saved ~11 B, which is inside the build's own noise.
+
 ### Audio
 
 `src/player.js` is SoundBox's `player-small.js`, altered in exactly two ways — `CPlayer` exported as a module binding, and the unused `getData()` deleted. zlib licence: keep the copyright header, and if you alter it further, say so in the ALTERED SOURCE notice at the top. Arpeggio was dead code for a while and kept anyway on the bet that a sound effect would want it; the sword clash does (`ARP_CHORD 1`, `ARP_SPEED 7`), so it is live now.

@@ -24,7 +24,6 @@ export const T = {
   inc: 0.05 * P,    // gold per econ point per tick
   grow: 0.004 * P,  // pop regrowth rate toward cap
   raiseW: 40,       // warriors produced — every kind musters the same bodies
-  minPop: 55,       // pop floor to allow raising
   repair: 2,        // gold per point of wall repaired
   repairStep: 10,   // points per repair order
   muster: 6 / P,    // ticks to raise a warband — about one road crossing

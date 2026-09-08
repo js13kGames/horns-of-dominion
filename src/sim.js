@@ -104,11 +104,13 @@ function revolt (i) {
 }
 
 // ---- player / AI actions -------------------------------------------------
-// every city fields footmen; only the ten that breed a specialist field anything else
+// every city fields footmen; only the ten that breed a specialist field anything else.
+// The populace the panel shows is the populace you can conscript: the only floor is
+// the muster's own price, so a city can be drafted down to almost nobody
 export const canRaise = (i, f, k = 0) => {
   const c = S.C[i]
   return c.o === f && !c.mu && !c.oc && c.u < T.calm && (!k || k === c.sp) &&
-    c.p >= T.minPop && c.p >= T.K[k][4] && S.F[f].g >= T.K[k][3]
+    c.p >= T.K[k][4] && S.F[f].g >= T.K[k][3]
 }
 // gold and populace are spent now; the warriors take T.muster ticks to gather
 export function raise (i, f, k = 0) {

@@ -97,7 +97,7 @@ ok(!S.A[1].hold, 'marching clears the hold')
 
 // --- 6. mustering takes time and can be lost ------------------------------
 fresh()
-const town = S.C.findIndex(c => c.o === 0 && c.p >= T.minPop)
+const town = S.C.findIndex(c => c.o === 0 && c.p >= T.K[0][4])
 S.F[0].g = 999
 const gold = S.F[0].g, pop = S.C[town].p
 ok(raise(town, 0), 'raise is accepted')
@@ -298,9 +298,10 @@ ok(S.A.length === 2 && S.A.every(a => a.k === 2), 'and splitting behemoths yield
 // the raise gate: footmen anywhere, the specialist only where it is bred
 fresh()
 S.F[0].g = 999
-const plain = S.C.findIndex(c => c.o === 0 && !c.sp && c.p >= T.minPop)
+const plain = S.C.findIndex(c => c.o === 0 && !c.sp && c.p >= T.K[0][4])
 ok(canRaise(plain, 0), 'a plain city raises footmen')
 ok(!canRaise(plain, 0, 2) && !canRaise(plain, 0, 1), 'and nothing else')
+
 const seat = S.C.findIndex(c => c.o === 0 && c.cap)
 const mine2 = S.C[seat].sp
 ok(canRaise(seat, 0, mine2), 'my capital raises what my realm breeds')
@@ -315,6 +316,27 @@ ok(S.C[seat].mk === mine2, 'and the muster remembers what it is raising')
 for (n = 0; n < T.muster + 2 && !S.A.length; n++) tick()
 ok(S.A.length === 1 && S.A[0].k === mine2 && S.A[0].w === T.raiseW,
   'the warband that gathers is that kind, at the usual strength')
+
+fresh()
+S.F[0].g = 9999
+// there is no floor above the muster's own price — the shown populace is all
+// available, and a city can be drafted down to nearly nobody
+const lean = S.C.findIndex(c => c.o === 0 && !c.sp)
+S.C[lean].p = T.K[0][4] + 5                       // 45: under the 55-body floor this had
+ok(canRaise(lean, 0), `👥${T.K[0][4] + 5} is enough now, floor or no floor`)
+S.C[lean].p = T.K[0][4]
+ok(canRaise(lean, 0), `and 👥${T.K[0][4]} exactly — the price is the whole gate`)
+S.C[lean].p = T.K[0][4] - 1
+ok(!canRaise(lean, 0), 'one body short of the price and the muster is refused')
+S.C[lean].p = 200
+let drafts = 0
+for (n = 0; n < 40 && canRaise(lean, 0); n++) {
+  raise(lean, 0); drafts++
+  for (let z = 0; z < T.muster; z++) tick()
+}
+ok(S.C[lean].p < T.K[0][4],
+  `👥200 conscripts ${drafts} times, down to ${S.C[lean].p | 0} left`)
+ok(drafts >= 5, 'which is the populace divided by the price, not by a floor')
 
 // a muster will not pour itself into the wrong kind standing on the same city
 fresh()
