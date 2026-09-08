@@ -133,7 +133,7 @@ Kinds refuse to merge, so a node can hold three of your hosts. Two consequences:
 
 ### Fights at a city, and sieges
 
-**A city never joins a fight between hosts.** `melee` takes one argument now; the garrison term it used to take (`c.d * 0.5` per tick, aimed at a random enemy of the owner) is gone. Two hosts standing on a city trade exactly as they would on the road outside it, less the two speed layers — `afield(g)` is `g[0].t >= 0` and `at(i)` only returns resters, so `might` and `strike` are already 1 at a node. That part needed no code; the garrison term was the whole of it.
+**A city never joins a fight between hosts.** `melee` takes one argument now; the garrison term it used to take (`c.d * 0.5` per tick, aimed at a random enemy of the owner) is gone. Two hosts standing on a city trade as they would on the road outside it, less the two speed layers and plus home ground — `afield(g)` is `g[0].t >= 0` and `at(i)` only returns resters, so `might` and `strike` carry no speed at a node. That part needed no code; the garrison term was the whole of it.
 
 The old term was not a small thumb on the scale. With `T.atk = 0.06 * P` and `c.d` drawn `ri(2, 10)` in `genMap`, 40 footmen at a Defense-5 city put out 0.24 bodies a tick and the city put out **2.50** — the walls were doing 91% of the killing, and the defender's *kind* barely registered: 40 unicorns (0.6 field power) held a city exactly as well as 40 behemoths (2.2), both to about 120 attacking behemoths. Kind matters at a city now, which is the point of the change.
 
@@ -143,7 +143,21 @@ The old term was not a small thumb on the scale. With `T.atk = 0.06 * P` and `c.
 
 **Why the tail was there.** A defended city was nearly unkillable, so two evenly matched realms could hold a border forever. Every frozen-border artifact this repo has recorded traces back to that one term.
 
-**The one thing no harness here can see.** `sim-test` and `diff-test` are all-AI, and the AI never garrisons deliberately — so the garrison term was a tool only a *human* was using. Removing it takes away the player's "leave forty men and the city holds" move and takes nothing from the AI. Every number above is blind to that. If defending starts to feel hopeless, this is the change to look at, and the fix is a rung or a `T` knob, not putting the term back.
+**The one thing no harness here can see.** `sim-test` and `diff-test` are all-AI, and the AI never garrisons deliberately — so the garrison term was a tool only a *human* was using. Removing it takes away the player's "leave forty men and the city holds" move and takes nothing from the AI. Every number above is blind to that. If defending starts to feel hopeless, this is the change to look at, and the fix is a rung or a `T` knob, not putting the term back — `T.home` below is the first instalment of exactly that, and it is a knob for the same reason.
+
+**Home ground is the one thing a city still lends its own men: `T.home`, 1.2 on attack.** A host fighting at a city of its own realm swings 20% harder — it knows the streets and the wells. It rides in `might`, in the slot the speed layers vacate at a node:
+
+    const might = (a, o) => pw(a) * (o ? (1 + T.K[a.k][2]) / 2 : S.C[a.a].o === a.o ? T.home : 1)
+
+Three properties are deliberate. It is **derived from the board** like the fog — the ground is home or it is not, there is no defender flag to set on arrival or clear on capture, and a city changing hands changes who fights harder on it that same tick. It is an **attack term only**: damage in `melee` comes off `a.w`, so home ground buys output and never durability, and the enemy still needs the same number of blows to kill you. And putting it in `might` rather than in `melee` means `odds()` sees it too, so the AI's rout check values a host on its own soil the way the melee will actually resolve it — one term, no second call site.
+
+It is gated by the same `o` that gates speed, so **a road fight is untouched**: the realm that owns the cities at either end of a road is worth nothing on it. Both halves have mutation-checked assertions in `cmd-test` section 11, and the road half matters — moving the factor outside the `o` ternary passes the node tests and breaks that one.
+
+**What home ground bought, measured** (400 games × three seed ranges at rung 2, plus a rung-1 range and `diff-test` either side; before is the same code with `T.home` at 1.0). The core does not move — p50 4304→4238, 4195→4212, 4184→4183 — and the tail comes in slightly: seed 1000 max 22283→**13936**, seed 9000 max 30598→**18376** and its one game over 24k → **0**. p90/p99 wobble either way by less than the spread between ranges. Stalemates stayed 0 across all three. `diff-test` at 200 a rung stays monotonic: 0 / 20.5 / 59.5 / 77.5 → 0 / **15.5** / 57.0 / 76.0.
+
+**The two win-share scares in that run cancelled, and how they were resolved is the reusable part.** Realm slot 0 rose in all three rung-2 ranges (257→302 of 1200, 21.4% → 25.2% against a fair 20% — on its own a 4σ story), while `diff-test`'s fair Duelist rung fell the *opposite* way, 20.5% → 15.5%. A fourth range settled it: at rung 1 on seed 3000, realm 0 went 84→76 of 400 and the whole spread *tightened*, 70–84 → 75–90. Two of the three signals say slot 0 lost a little and one says it gained a lot, so there is no bias here to attribute — which is exactly the trap this file warns about, and a single range would have "proved" either answer.
+
+**What was left alone on purpose.** `force()` and `friend()` in `ai.js` still weigh hosts with bare `pw`, so the AI slightly under-rates a defender standing on its own city when it picks a target. Teaching them `T.home` is a one-word change to the highest-risk file in the repo, and the ladder above did not ask for it. If a defended city starts looking too attractive to the AI, that is the knob — with a full balance re-run.
 
 ### Road contact, and the flee toll
 

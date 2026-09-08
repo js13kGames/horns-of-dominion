@@ -25,10 +25,14 @@ export const pw = a => a.w * T.K[a.k][0]
 // a fight between cities is decided at the pace you march. A host's own speed is
 // its weight in the open — no matchup table needed, the counter falls out of the
 // movement rules: a behemoth is slow, so it spends its life on roads being caught.
-// At a city speed buys nothing and this is 1: walls do not manoeuvre.
+// At a city speed buys nothing — walls do not manoeuvre — and home ground takes
+// its place: a host fighting at a city of its own realm swings T.home harder,
+// knowing the streets and the wells. That is an attack term, not a garrison one;
+// the city itself still never joins in, and being at home buys no durability.
 // `g[0].t >= 0` separates the two — a road cluster is all marchers, a node all rest
 const afield = g => g[0].t >= 0
-const might = (a, o) => pw(a) * (o ? (1 + T.K[a.k][2]) / 2 : 1)
+const might = (a, o) => pw(a) *
+  (o ? (1 + T.K[a.k][2]) / 2 : S.C[a.a].o === a.o ? T.home : 1)
 // the ambush. `melee` already aims each host at one particular enemy, so the
 // matchup can be read off the two march rates: outpace what you land on and you
 // caught it strung out on the road. Behind walls nobody gets outrun, so it is 1.
@@ -185,8 +189,9 @@ export function order (a, j) {
 // one resolver for every fight. each host swings at a randomly chosen enemy
 // host; damage is banked and applied together, so resolution order never matters.
 // The city never joins in: a fight between hosts standing on it is the same fight
-// it would be on the road outside, less the speed layers `afield` gates. A city
-// spends its defence on the siege, and only once there is nobody left to fight.
+// it would be on the road outside, less the speed layers `afield` gates and plus
+// the owner's home-ground bonus. A city spends its defence on the siege, and
+// only once there is nobody left to fight.
 function melee (g) {
   const hit = new Map(), o = afield(g)
   const hurt = (x, d) => hit.set(x, (hit.get(x) || 0) + d)

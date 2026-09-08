@@ -72,6 +72,7 @@ export const T = {
   // its two behemoth realms won 202 of 1200 games against the unicorn realms' 265.
   K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐘']],
   amb: 0.6,          // how hard a speed advantage bites in an open-field fight
+  home: 1.2,         // attack bonus for a host fighting at a city of its own realm
   wing: 0.15,       // share of a realm's war chest it will keep in flyers, no more
   sp: [2, 1, 2, 1, 1] // the specialist each realm breeds, at its capital and one other city
 }

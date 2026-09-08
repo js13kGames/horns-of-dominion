@@ -417,5 +417,41 @@ S.A = S.A.filter(a => a.id !== 1205)
 for (let z = 0; z < 5; z++) tick()
 ok(S.C[keep].s < wall0, 'the siege starts only once there is nobody left to fight')
 
+// --- 11. home ground: a host fights harder at a city of its own realm ------
+// the city still swings nothing itself; the men standing on it swing T.home
+// harder. Same seed, same rolls, same kinds — the ownership of the ground is
+// the only thing that differs between these two runs.
+const groundFight = owner => {
+  fresh()
+  const i = S.C.findIndex(c => c.o === 0)
+  S.C[i].o = S.C[i].na = owner            // set `na` too, or unrest would revolt it
+  S.C[i].s = S.C[i].m
+  S.A = [put(1206, 0, 100, i, -1), put(1207, 1, 100, i, -1)]
+  for (let z = 0; z < 40; z++) tick()
+  const a = getArmy(1206), b = getArmy(1207)
+  return [a ? a.w : 0, b ? b.w : 0]
+}
+const [hostAtHome, foeAtHome] = groundFight(0)   // the ground belongs to host 1206
+const [hostAway, foeAway] = groundFight(2)       // the ground belongs to nobody present
+ok(foeAtHome < foeAway,
+  `a host at home cuts its enemy down faster (${foeAtHome.toFixed(1)} left v ${foeAway.toFixed(1)})`)
+ok(hostAtHome > hostAway,
+  `and so takes less in return (${hostAtHome.toFixed(1)} left v ${hostAway.toFixed(1)})`)
+ok(Math.abs(hostAway - foeAway) < 6,
+  `on ground belonging to neither, the same fight is even (${hostAway.toFixed(1)} v ${foeAway.toFixed(1)})`)
+
+// and the bonus is a city's, not a road's: the road out of a city is nobody's home
+const roadFight = owner => {
+  fresh()
+  const [p, q] = longRoad()
+  S.C[p].o = S.C[p].na = S.C[q].o = S.C[q].na = owner
+  S.A = [put(1208, 0, 100, p, q), put(1209, 1, 100, q, p)]
+  for (let z = 0; z < 400; z++) tick()
+  const a = getArmy(1208), b = getArmy(1209)
+  return (a ? a.w : 0).toFixed(6) + ' ' + (b ? b.w : 0).toFixed(6)
+}
+ok(roadFight(0) === roadFight(2),
+  `a road fight is the same whoever owns the cities at its ends (${roadFight(0)})`)
+
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)
