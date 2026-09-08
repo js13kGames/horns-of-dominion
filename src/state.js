@@ -49,8 +49,9 @@ export const T = {
   starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
   escal: 5000 / P,  // sieges grind faster every this many ticks
   slow: 10,         // ticks between unrest checks — it is a slow-burning thing
-  stir: 2.2 * P,    // unrest a conquered city gathers per check, at full strength
-  pace: 8 * P,      // unrest a garrison puts down per check — it must beat `stir`
+  stir: 4.4 * P,    // unrest a conquered city gathers per check, at full strength
+  pace: 8 * P,      // unrest a garrison puts down per check — it must beat `stir`,
+                    // which now takes 55% of a full-weight garrison, not 27%
   hold: 0.25,       // warriors per head of populace for a garrison at full weight
   seize: 70,        // unrest the moment a city falls to anyone but its own realm
   calm: 75,         // above this a city will not conscript for whoever holds it —

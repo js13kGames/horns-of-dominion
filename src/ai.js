@@ -1,11 +1,19 @@
 import { S, T, dist } from './state.js'
-import { raise, fix, order, canRaise, canFix, pw } from './sim.js'
+import { raise, fix, order, canRaise, canFix, pw, garrison } from './sim.js'
 
 // an enemy host walking the road between i and j — a flyer's whole reason to exist
 const column = (i, j, f) => S.A.some(b => b.o !== f && b.t >= 0 &&
   ((b.a === i && b.t === j) || (b.a === j && b.t === i)))
 const force = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o !== f ? pw(a) : 0), 0)
 const friend = (i, f) => S.A.reduce((n, a) => n + (a.t < 0 && a.a === i && a.o === f ? pw(a) : 0), 0)
+// unrest is a front like any other and the only answer to it is boots. `held` is
+// the pacify side of the unrest check beating the stir side — the same sum
+// `tick()` does, without the sat clamp. It is read twice: a host that is the
+// reason a conquest is quiet does not march, and an idle host is drawn to a
+// conquest nobody is holding down
+const held = (i, f) => garrison(i, f) * T.pace * S.F[f].dm.pac >=
+  S.C[i].p * T.hold * T.stir
+const sits = (i, f) => S.C[i].o === f && S.C[i].u > T.seize && held(i, f)
 // ticks for this host to walk to a neighbour, and the discount that puts on the
 // prize. T.muster is the yardstick: a march longer than raising a fresh warband
 // is worth about half as much. This is the only place the AI reads a road length
@@ -74,6 +82,7 @@ function step (f, F) {
   // otherwise take ground. a long war makes everyone bolder, so borders never freeze
   const bold = 1 + S.tick / T.bold
   for (const a of idle) {
+    if (sits(a.a, f)) continue           // it is the reason that city is quiet
     let best = -1, bs = 0
     for (const j of S.C[a.a].n) {
       const c = S.C[j], e = force(j, f)
@@ -82,6 +91,7 @@ function step (f, F) {
         // reinforce a threatened neighbour, or drift toward the frontier
         s = c.n.some(k => S.C[k].o !== f) ? 1 + friend(j, f) / 100 : 0
         if (force(j, f) > 0) s += 6
+        if (c.u > T.calm && !held(j, f)) s += 5      // a revolt is a city lost too
       } else {
         // enough to beat the field force and crack the walls before bleeding out
         if (pw(a) * bold < e * 1.3 + 1.6 * Math.sqrt(c.d * Math.max(c.s, 1)) / T.K[a.k][1]) continue

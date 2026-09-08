@@ -88,7 +88,7 @@ export function hop (from, to) {
 // down — in proportion to the size of the crowd being sat on. Deliberately
 // bodies, not `pw`: sitting on a populace is done with boots, and a behemoth is
 // not worth two footmen at it. Weighting this would move round 14's balance.
-const garrison = (i, f) => at(i).reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
+export const garrison = (i, f) => at(i).reduce((n, a) => n + (a.o === f ? a.w : 0), 0)
 export const unrest = i => S.C[i].u >= T.calm
 
 // when it boils over the city simply goes home; no mob, no siege

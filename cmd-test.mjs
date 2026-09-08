@@ -2,6 +2,7 @@
 import { S, T, dist } from './src/state.js'
 import { genMap } from './src/map.js'
 import { tick, order, split, raise, canRaise, hop, getArmy } from './src/sim.js'
+import { ai } from './src/ai.js'
 
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
@@ -170,6 +171,11 @@ ok(alone > T.seize, `unheld, a conquered city stirs itself up (${alone | 0}%)`)
 ok(token > T.seize, `a single warrior cannot hold a city of 120 down (${token | 0}%)`)
 ok(proper < T.seize, `${120 * T.hold} warriors can (${proper | 0}%)`)
 ok(boil(30, 400) > boil(30, 100), 'the same garrison does less in a bigger city')
+// and half a full-weight garrison is no longer enough: `stir` takes 55% of one
+// to break even, so what used to hold a city now watches it boil
+const half = boil(120 * T.hold / 2, 120)
+ok(half > T.seize && proper < T.seize,
+  `half a garrison loses the city (${half | 0}% against ${proper | 0}%)`)
 ok(boil(200, 120, 5) === 0, 'and unrest never goes below nothing')
 
 // and it only moves on the slow clock, not every tick
@@ -182,6 +188,17 @@ for (n = 0; n < T.slow - 1; n++) tick()
 ok(S.C[k].u === T.seize, `unrest sits still between checks, ${T.slow} ticks apart`)
 tick()
 ok(S.C[k].u > T.seize, 'and moves on the check itself')
+
+// and that clock is quick enough to matter inside one game: a neglected
+// conquest boils from the seize to the riot line in a few hundred ticks
+fresh()
+k = S.C.findIndex(c => c.o !== 0)
+S.C[k].na = S.C[k].o; S.C[k].o = 0; S.C[k].u = T.seize
+S.A = []
+S.tick = 0
+for (n = 0; n < 3000 && S.C[k].u < T.riot; n++) tick()
+ok(S.C[k].u >= T.riot && n < 600,
+  `an unheld conquest reaches ${T.riot}% in ${n} ticks, a fraction of a game`)
 
 // a city held by the realm it was drafted into carries no unrest at all
 fresh()
@@ -474,6 +491,40 @@ const roadFight = owner => {
 }
 ok(roadFight(0) === roadFight(2),
   `a road fight is the same whoever owns the cities at its ends (${roadFight(0)})`)
+
+// --- 12. the AI garrisons: unrest is a front, and boots are the answer ------
+// at tick 0 the rotation hands the turn to realm 0, so one ai() call is one
+// realm's turn — no ticks run, so nothing else on the board moves
+const aiTurn = () => { S.tick = 0; ai() }
+fresh(1)
+const cq = S.C.findIndex(c => c.o === 0 && c.n.some(j => S.C[j].o !== 0))
+S.C[cq].na = 1; S.C[cq].p = 100                  // a frontier city taken from realm 1
+S.C[cq].u = T.seize + 5
+S.A = [put(1301, 0, 100, cq, -1)]
+aiTurn()
+ok(S.A[0].t < 0, 'a host holding a restless conquest down does not march away')
+
+S.C[cq].u = 0                                    // quiet: there is nothing to hold
+S.A = [put(1301, 0, 100, cq, -1)]
+aiTurn()
+ok(S.A[0].t >= 0, 'and marches the moment the city is quiet again')
+
+S.C[cq].u = T.seize + 5; S.C[cq].p = 4000        // a crowd it could never sit on
+S.A = [put(1301, 0, 100, cq, -1)]
+aiTurn()
+ok(S.A[0].t >= 0, 'a host too small for the crowd marches on rather than sitting')
+
+// and an idle host is drawn to a conquest that has nobody holding it at all
+fresh(1)
+const hub = S.C.findIndex(c => c.o === 0 && c.n.length > 1)
+for (const j of S.C[hub].n) { S.C[j].o = 0; S.C[j].na = 0; S.C[j].u = 0 }
+S.C[hub].na = 0; S.C[hub].u = 0
+const boiling = S.C[hub].n[0]
+S.C[boiling].na = 1; S.C[boiling].p = 100; S.C[boiling].u = T.calm + 5
+S.A = [put(1302, 0, 100, hub, -1)]
+aiTurn()
+ok(S.A[0].t === boiling,
+  `an idle host marches to the conquest boiling at ${S.C[boiling].u | 0}%`)
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

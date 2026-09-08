@@ -143,7 +143,7 @@ The old term was not a small thumb on the scale. With `T.atk = 0.06 * P` and `c.
 
 **Why the tail was there.** A defended city was nearly unkillable, so two evenly matched realms could hold a border forever. Every frozen-border artifact this repo has recorded traces back to that one term.
 
-**The one thing no harness here can see.** `sim-test` and `diff-test` are all-AI, and the AI never garrisons deliberately — so the garrison term was a tool only a *human* was using. Removing it takes away the player's "leave forty men and the city holds" move and takes nothing from the AI. Every number above is blind to that. If defending starts to feel hopeless, this is the change to look at, and the fix is a rung or a `T` knob, not putting the term back — `T.home` below is the first instalment of exactly that, and it is a knob for the same reason.
+**The one thing no harness could see at the time.** `sim-test` and `diff-test` are all-AI, and back then the AI never garrisoned deliberately — so the garrison term was a tool only a *human* was using. (It garrisons now; see "The AI garrisons" below. That does not bring the term back — the AI parks boots on a city to hold its *people* down, and boots are still all a city contributes to a fight.) Removing it takes away the player's "leave forty men and the city holds" move and takes nothing from the AI. Every number above is blind to that. If defending starts to feel hopeless, this is the change to look at, and the fix is a rung or a `T` knob, not putting the term back — `T.home` below is the first instalment of exactly that, and it is a knob for the same reason.
 
 **Home ground is the one thing a city still lends its own men: `T.home`, 1.2 on attack.** A host fighting at a city of its own realm swings 20% harder — it knows the streets and the wells. It rides in `might`, in the slot the speed layers vacate at a node:
 
@@ -174,6 +174,43 @@ Two bugs lived here together and fed each other. Both have regression tests in `
 Each city carries one number, `u` (0–100), plus `na`, the realm it was drafted into. `u` is nothing at all while `na` holds the city; the moment anyone else takes it, `u` jumps to `T.seize` (never downward — a second captor inherits whatever the first earned). It then moves on its own slow clock, `T.slow` ticks apart, which is the only place in `tick()` that is not per-tick.
 
 Per check, a conquered city gathers `T.stir` and its occupier puts down `T.pace` *scaled by strength against population* (`min(1, warriors / (pop × T.hold))` — without that scaling one warrior held a city as well as two hundred, and splitting one off cost nothing). Past `T.calm` the city will not conscript and flies ✊; past `T.riot` it may `revolt()` on any check, which simply hands the city back to `na` at full walls — no mob, no siege, no army spawned.
+
+**`T.stir` is 4.4 * P — double what it was — and `T.pace` was left alone.** That is deliberately *not* the same change as speeding up the clock: `T.slow` stays at 10, so the cycle runs at its old cadence and only the rise doubled. Two consequences, both intended. A neglected conquest now climbs `T.seize` 70 → `T.riot` 90 in **460 ticks instead of 910**, about a ninth of a p50 game rather than a fifth, so revolts are something you see rather than something the numbers promise. And **a garrison must be twice as strong to break even**: `sat` has to clear `stir / pace` = 0.55 of `c.p * T.hold`, where 0.275 used to do — 17 warriors on a populace of 120, not 9. Half a full-weight garrison now watches the city boil. Both have mutation-checked assertions in `cmd-test` section 8; halving `stir` back fails them.
+
+The alternative considered and rejected was halving `T.slow` to 5, which doubles stir *and* pace per unit time and leaves the break-even garrison exactly where it was. It measured better (it is a pure time-compression) but it is not what was wanted: token garrisons were supposed to stop working.
+
+**What it cost, measured** (400 games × three seed ranges at rung 2, `diff-test` either side). The tail paid for it, consistently and in every range — revolts hand border cities back, so neither realm consolidates and the war drags:
+
+| seed | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| 1000 | 4073→4235 | 6633→6789 | 11867→13427 | 15139→20844 |
+| 5000 | 3948→4068 | 6158→7177 | 8919→12086 | 11426→15961 |
+| 9000 | 4084→4210 | 6859→7287 | 10741→11611 | 13255→18516 |
+
+Seed 5000 also picked up **1 stalemate and 1 game over 24k** (game 95, realms 3 and 4 frozen at 12 cities against 8 — a border that keeps flipping, not a rump being fed). `diff-test` holds its shape, 0 / 20.5 / 61.5 / 80.5 → 0 / 20.5 / 60.5 / 80.0, with the fair rung still on 20.5% and its p50 stretched 8270 → 10118. Win spread actually *tightened* across the three ranges, 211–283 → 208–265 of 1200. This is roughly the same trade the flee fix took in round 17, and it is accepted for the same reason: the mechanic is the point. If the tail needs paying back, `T.rise` (riots fire sooner once past the line) and `T.pace` are the knobs, in that order — not `T.stir`.
+
+**The harnesses were half-blind to this at first, which is what forced the next change.** The numbers above were measured against an AI that never garrisoned, so the doubled `stir` reached it only as revolts — and it had no answer at all, because the take-ground loop marched every host straight back out of a city it had just taken. That is what "The AI garrisons" below fixes, and the tail figures in this table are superseded by the ones there. `D[].pac` (0.6 / 1 / 1.15 / 1.62) multiplies `sat`, so it is the rung knob for how hard holding a conquest is, and the player is always `D[1]`.
+
+**The AI garrisons.** This is the one claim in this file that round 21 reversed, and it was reversed on evidence: doubling `T.stir` handed the AI a way to lose cities that it had no answer to. After a capture the take-ground loop marched the host straight back out — every neighbour scores something, so a fresh conquest was never held — and the city climbed to `T.riot` and went home. Two reads of one quantity in `ai.js` fix it, and `garrison` is now exported from `sim.js` for them:
+
+    const held = (i, f) => garrison(i, f) * T.pace * S.F[f].dm.pac >= S.C[i].p * T.hold * T.stir
+    const sits = (i, f) => S.C[i].o === f && S.C[i].u > T.seize && held(i, f)
+
+`held` is the pacify side of the unrest check beating the stir side — literally the sum `tick()` does, minus the `sat` clamp, and it reads `S.F[f].dm.pac` so each rung judges its own grip. Then: **a host that is the reason a conquest is quiet does not march** (`if (sits(a.a, f)) continue`, at the top of the take-ground loop), and **an idle host is drawn to a conquest nobody is holding** (`if (c.u > T.calm && !held(j, f)) s += 5`, in the friendly branch of the score).
+
+Three details carry weight. The `held` test inside `sits` is what stops a host being pinned to a city it could never hold — 100 warriors on a populace of 4,000 walk on instead of sitting there uselessly, and `cmd-test` section 12 fails if that term is dropped. Siege relief and the flyer hunt read `idle` *before* the pin and so still override it, because an army at the gates outranks a restless populace. And the release is `u > T.seize`, not `u > T.calm`: **the looser pin was measured and is worse.** Releasing at `T.calm` lets the host go after a check or two, and across three ranges that gave 1 / 1 / 0 stalemates against the tight pin's 0 / 0 / 0 — including the *same* game 95 on seed 5000 (realms 3 and 4 frozen at 12 cities against 8) that doubling `stir` had introduced. The tight pin is what breaks that deadlock; the loose one watches it happen.
+
+**What it bought, measured** (400 games × three seed ranges at rung 2, against the doubled `stir` with no garrisoning):
+
+| seed | p50 | p90 | p99 | max | stalemate |
+|---|---|---|---|---|---|
+| 1000 | 4235→4311 | 6789→7558 | 13427→12904 | 20844→**14920** | 0→0 |
+| 5000 | 4068→4355 | 7177→8229 | 12086→14009 | 15961→25163 | **1→0** |
+| 9000 | 4210→4407 | 7287→7385 | 11611→13785 | 18516→18833 | 0→0 |
+
+Read that honestly: it buys **consolidation**, not speed. Stalemates go to zero and seed 1000's worst game drops from 20.8k to 14.9k, but armies are tied down holding ground, so p50 rises 2–5% in every range and seed 5000 grew one 25k game. `diff-test` went 0 / 20.5 / 60.5 / 80.0 → 0 / **18.0** / 65.0 / 79.5 — still monotonic, fair rung a little under 20%. Against the state before the whole unrest round, games are ~5–8% longer with a fatter p99: that is the price of the mechanic, paid deliberately.
+
+**It cost ~60 B and headroom is now ~50 B.** The next feature will have to find bytes elsewhere. If they are needed here, `S.F[f].dm.pac` is the first thing to drop from `held` — the AI would then judge every rung by Duelist's pacify rate, which is wrong but cheap.
 
 The sign of `T.stir` is load-bearing: a native realm down to `T.dying` cities or fewer *rallies nobody*, so its lost cities calm instead of stirring and no revolt fires for it. Without that, revolts keep handing a crumbling rump fresh cities, it never falls below `T.dying`, and the game will not end — that showed up as a single 57k-tick game in a 400-game run while the p50 barely moved.
 
@@ -232,7 +269,7 @@ Almost everything a panel might report is already on the map: ownership is the r
 
 **Verify string replacements.** Silent no-op `sed`/`replace` edits have shipped bugs here more than once. Assert the match count, or use a tool that errors on no-match, and `grep` the result.
 
-**AI movement is the highest-risk code in the repo.** Past regressions include 13,000-warrior frozen stacks with 400/400 timeouts, and total gridlock from a movement gate. Change `ai.js` only with a full balance re-run. The AI never splits hosts and never garrisons deliberately — both were measured, and neither is a bug to fix without evidence.
+**AI movement is the highest-risk code in the repo.** Past regressions include 13,000-warrior frozen stacks with 400/400 timeouts, and total gridlock from a movement gate. Change `ai.js` only with a full balance re-run. The AI never splits hosts — measured, and not a bug to fix without evidence. It *does* garrison, as of round 21, and the evidence that justified writing that was concrete: doubling `T.stir` gave it a way to lose cities it had no way to answer.
 
 **Visual work has no browser.** There is no headless browser available, so `shot.mjs` is how you actually look at a change: it drives the real game against a recording 2D context and re-emits a frame as SVG, which `qlmanage -t` rasterises into something readable. Rendering blind has repeatedly shipped mistakes that were obvious the moment the frame was looked at — a rainbow entirely hidden behind the island, mountains swallowed by their own tree line, labels invisible on bright grass.
 
