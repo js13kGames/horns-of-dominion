@@ -38,7 +38,13 @@ const might = (a, o) => pw(a) *
 // caught it strung out on the road. Behind walls nobody gets outrun, so it is 1.
 const strike = (a, b, o) => might(a, o) *
   (o ? Math.max(0.2, 1 + (T.K[a.k][2] - T.K[b.k][2]) * T.amb) : 1)
-const rate = a => T.speed * T.K[a.k][2]        // world units per tick, by kind
+// stamina. Fatigue is the one number a host carries that the board cannot say —
+// it is history, not position — and it is spent walking, spent far faster
+// fighting, and shed standing still. Winded, a host marches at half pace: that
+// is what stops a warband skipping from city to city forever, and it hands the
+// defender the one thing standing still is good for.
+export const tired = a => a.fg >= T.wind
+export const rate = a => T.speed * T.K[a.k][2] * (tired(a) ? 0.5 : 1)
 // march progress including the current frame's fraction of a tick, so the
 // renderer and the panel read out continuous motion between ticks
 export const prog = a => a.t < 0 ? 1
@@ -169,7 +175,7 @@ export function split (a, n) {
   n = Math.max(1, Math.min(Math.round(n), Math.floor(a.w) - 1))
   a.w -= n
   a.hold = 1
-  S.A.push({ id: nextId++, o: a.o, w: n, k: a.k, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1 })
+  S.A.push({ id: nextId++, o: a.o, w: n, k: a.k, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1, fg: a.fg })
   return 1
 }
 
@@ -378,6 +384,12 @@ export function tick () {
     if (h < 0) { a.dst = -1; continue }
     a.t = h; a.pr = 0; a.hold = 0
   }
+
+  // 5d. stamina. `a.eg` is already "fought this tick" — roads() clears it for
+  // every host and every melee and siege sets it — so this needs no new flag,
+  // and a besieger chewing a wall pays the fighting rate with nobody to fight.
+  for (const a of S.A) a.fg = Math.max(0, Math.min(100,
+    (a.fg || 0) + (a.eg ? T.brawl : a.t >= 0 ? T.tread : -T.rest)))
 
   // 5c. civil unrest, on its own slower clock. A conquered city chafes as long
   // as the realm it belongs to is still standing to rally to; once that realm is

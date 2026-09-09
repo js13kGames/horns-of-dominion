@@ -263,7 +263,10 @@ const crossing = k => {
   const [u, v] = longRoad()
   S.A = [put(1101, 0, 40, u, v, k)]
   let z = 0
-  for (; z < 4000 && S.A[0].t >= 0; z++) tick()
+  // kept fresh on purpose: this measures the speed table, not the stamina rule.
+  // the longest road is long enough to wind a footman and not a unicorn, which
+  // would put the difference between the two here. Section 13 tests half pace.
+  for (; z < 4000 && S.A[0].t >= 0; z++) { S.A[0].fg = 0; tick() }
   return z
 }
 const cR = crossing(0), cP = crossing(1), cD = crossing(2)
@@ -525,6 +528,87 @@ S.A = [put(1302, 0, 100, hub, -1)]
 aiTurn()
 ok(S.A[0].t === boiling,
   `an idle host marches to the conquest boiling at ${S.C[boiling].u | 0}%`)
+
+// --- 13. stamina: cheap on the march, dear in a fight, half pace once winded --
+fresh()
+;[i, j] = longRoad()
+S.A = [put(1401, 0, 100, i, j)]
+tick()
+ok(Math.abs(S.A[0].fg - T.tread) < 1e-9, `a marching host gathers ${T.tread} fatigue a tick`)
+for (n = 0; n < 9; n++) tick()
+ok(Math.abs(S.A[0].fg - T.tread * 10) < 1e-9, 'and keeps gathering it, tick by tick')
+
+fresh()
+S.A = [put(1402, 0, 100, start, -1)]
+S.A[0].fg = 50
+tick()
+ok(Math.abs(S.A[0].fg - (50 - T.rest)) < 1e-9, `standing still sheds ${T.rest} a tick`)
+for (n = 0; n < 200; n++) tick()
+ok(S.A[0].fg === 0, 'down to fresh, and no further')
+
+// a fight is where stamina actually goes: four times the price of walking
+fresh()
+;[i, j] = longRoad()
+S.A = [put(1403, 0, 100, i, j), put(1404, 1, 100, j, i)]
+for (n = 0; n < 2000 && !S.A[0].st; n++) tick()
+ok(S.A[0].st, 'hosts are locked in a road melee')
+S.A[0].fg = 0
+tick()
+ok(Math.abs(S.A[0].fg - T.brawl) < 1e-9,
+  `a tick of fighting costs ${T.brawl}, a tick of walking ${T.tread}`)
+S.A[0].fg = 99.5
+tick()
+ok(S.A[0].fg === 100, 'and fatigue tops out at 100 however long the fight runs')
+
+// chewing a wall is work too: a lone besieger has nobody to fight and still tires
+fresh()
+const wall = S.C.findIndex(c => c.o !== 0)
+S.A = [put(1405, 0, 300, wall, -1)]
+tick()
+ok(Math.abs(S.A[0].fg - T.brawl) < 1e-9, 'a besieger tires at the fighting rate')
+
+// winded is the whole point: half the ground per tick, and it is the march rate
+// that changes, not the number of bodies
+const walked = fg => {
+  fresh()
+  const [u, v] = longRoad()
+  S.A = [put(1406, 0, 100, u, v)]
+  S.A[0].fg = fg
+  const was = S.A[0].pr
+  for (let z = 0; z < 10; z++) tick()
+  return (S.A[0].pr - was) * dist(S.C[u], S.C[v])
+}
+const brisk = walked(0), winded = walked(T.wind)
+ok(Math.abs(winded / brisk - 0.5) < 0.01,
+  `a winded host covers half the ground (${winded.toFixed(1)} of ${brisk.toFixed(1)} units)`)
+ok(Math.abs(brisk - T.speed * 10) < 0.01, 'a fresh one covers the table rate')
+
+// a split cannot launder a winded host into a rested one
+fresh()
+S.A = [put(1407, 0, 100, start, -1)]
+S.A[0].fg = T.wind + 10
+ok(split(S.A[0], 40), 'a winded host can still be split')
+ok(S.A[1].fg === S.A[0].fg, 'and both halves carry the fatigue the whole host had')
+
+// the AI rests. a winded host is worth less on the road than in a day's camp
+fresh(1)
+const front = S.C.findIndex(c => c.o === 0 && c.n.some(j => S.C[j].o !== 0))
+S.A = [put(1408, 0, 400, front, -1)]
+S.A[0].fg = T.wind
+aiTurn()
+ok(S.A[0].t < 0, 'a winded AI host stands and gets its breath back')
+S.A[0].fg = 0
+aiTurn()
+ok(S.A[0].t >= 0, 'and takes ground again once it is rested')
+
+// but an army at the gates outranks a rest: relief is picked before the pin
+fresh(1)
+const near = S.C.findIndex(c => c.o === 0 && c.n.some(j => S.C[j].o === 0))
+const sib = S.C[near].n.find(j => S.C[j].o === 0)
+S.A = [put(1409, 0, 400, near, -1), put(1410, 1, 100, sib, -1)]
+S.A[0].fg = T.wind
+aiTurn()
+ok(S.A[0].t === sib, 'a winded host still marches to relieve a besieged neighbour')
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

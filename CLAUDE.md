@@ -137,6 +137,41 @@ Kinds refuse to merge, so a node can hold three of your hosts. Two consequences:
 
 **The fan counts hosts, not kinds.** It used to key the sideways offset on `a.k`, which put the two halves of a split — same owner, same kind, same node — at exactly the same pixel, one disc and one number hiding the other. `place()` now groups every resting host by `node:owner`, sorts by id and hands `spot()` its place in that group counted from the middle; the node branch spends that as `sp * 26 / r` radians, which is 26px of arc whatever the city's size, so three kinds land where they always did and a split fans the same way. One map of slots serves both branches, so the keys must not collide — a node key carries an `'n'` prefix, or city 5 held by realm 2 would share a key with the road 5–2. Both rules have `dom-test` assertions, and the road key needs no `S.E` lookup: grouping reads a host's own endpoints.
 
+### Stamina
+
+`a.fg` is the one number a host carries that the board cannot say — it is history, not position — so unlike the fog, command and terrain there is nothing to derive it from and it has to be stored. It runs 0–100 like a city's unrest. A host gathers `T.tread` a tick on the march and `T.brawl` a tick in a fight, four times as dear, and sheds `T.rest` a tick standing still. Past `T.wind` it is **winded and marches at half pace** — that is the whole of the mechanic, and it is what stops a warband skipping from city to city forever.
+
+Four things fall out of it rather than being built:
+
+- **No new flag.** The accrual reads `a.eg`, which already means "fought this tick": `roads()` clears it on every host each tick, and every melee and every siege sets it. So a besieger chewing a wall pays the fighting rate with nobody to fight, which is right — and there is nothing to keep in sync.
+- **`rate()` is the only place a march speed is computed**, so half pace reaches movement, the renderer's sub-tick interpolation and the AI's `eta()` at once. `eta` used to spell out `T.speed * T.K[a.k][2]`; it calls `rate(a)` now, so `soon()` discounts a prize by what a *winded* host would take to reach it, and it is shorter than the code it replaced.
+- **What it really taxes is retreat.** `flee()` never touches fatigue, but a host that turns away at half pace usually fails to break contact — which is why the measured effect is *shorter* games, and not the longer ones every other drag on movement has bought.
+- **Reinforcements join the exhaustion.** `mustered()` folds 40 fresh warriors into a host that is already there, and the merge does not dilute `fg`. A brand new host has no `fg` at all until its first tick, which `(a.fg || 0)` covers.
+
+`T.wind` sits deliberately below the 100 cap: a host that has fought itself flat stands ~40 ticks to move freely again and ~100 to be fresh, against 60 to muster a warband. Make the threshold *equal* the cap and one tick of rest un-winds a host — that is the bug this shape avoids, not a spare knob.
+
+**The AI rests, and the gate is in the take-ground loop only** — `if (sits(a.a, f) || tired(a)) continue`. Siege relief and the flyer hunt both read `idle` before it, so an army at the gates outranks a rest exactly as it outranks the unrest pin. Both halves have mutation-checked assertions in `cmd-test` section 13.
+
+**Split halves inherit fatigue** (`fg: a.fg` in `split`), or a winded host would launder itself into two rested ones for nothing.
+
+**The ring is the whole UI.** `render.js` draws an arc at r=15 around a host filling as `a.fg / 100` — amber `#ffd76a99` while it gathers, `#ff9a3c` on the tick the host is winded — which is the same amber a mustering city wears, because it says the same kind of thing: a clock you are waiting on. A fresh host draws nothing, so the board only carries the ring where it has something to say, and the panel gains no row. It is drawn for every host the player can *see*, enemies included: fatigue is intel that comes with sight, like the strength number under the disc, and it inherits the fog for free by sitting inside the `seeArmy` loop.
+
+**Fatigue is deliberately absent from the two open-field speed layers.** `might` and `strike` read `T.K[a.k][2]` straight from the table, so a winded unicorn still ambushes like a fresh one. That is a knowing inconsistency — speed is a combat stat in the open, and stamina halves speed — and it is left alone because it is a far bigger balance change than the march rule. It is one factor in `might` if road fights ever want it, with a full re-run.
+
+**What it bought, measured** (400 games × three seed ranges at rung 2, `diff-test` at 200 a rung; *before* is the same tree with `T.tread` and `T.brawl` at zero, which is an exact no-op — it reproduced round 21's seed-1000 figures to the tick, which is what makes it a control rather than a second opinion). Games get **shorter** in every range, which was not the expected direction:
+
+| seed | p50 | p90 | p99 | max | stalemate |
+|---|---|---|---|---|---|
+| 1000 | 4311→**3993** | 7558→7540 | 12904→13874 | 14920→17777 | 0→**1** |
+| 5000 | 4355→**4075** | 8229→7576 | 14009→13733 | 25163→23902 | 0→0 |
+| 9000 | 4407→**4049** | 7385→6690 | 13785→**10942** | 18833→15009 | 0→0 |
+
+Win spread tightened where there is a control to compare against (seed 1000, 58–105 → 63–92 of 400 against a fair 80; the other ranges land 70–85 and 64–97). `diff-test` went 0 / 18.0 / 65.0 / 79.5 → 0 / **21.0** / 60.5 / 80.5 — still monotonic, and the fair Duelist rung back on 20% from under it.
+
+**The one stalemate is worth reading before treating it as a fatigue problem.** It is game 181 of seed 1000, realms 0 and 3 frozen at 13 cities against 7, and at tick 120,000 **every host on the board is at `fg` 0**, parked, with the whole map settled at 0 unrest and realm 3 sitting on an 821-warrior stack nobody will attack. It is the old frozen border — the AI's own attack gate refusing a fight — reached by a different route, not armies too tired to move. 1 in 1,200 games, against p50 down 7–8% in all three ranges.
+
+It cost ~90 B zipped, which is inside the noise of Roadroller's own run-to-run spread either side of it.
+
 ### Fights at a city, and sieges
 
 **A city never joins a fight between hosts.** `melee` takes one argument now; the garrison term it used to take (`c.d * 0.5` per tick, aimed at a random enemy of the owner) is gone. Two hosts standing on a city trade as they would on the road outside it, less the two speed layers and plus home ground — `afield(g)` is `g[0].t >= 0` and `at(i)` only returns resters, so `might` and `strike` carry no speed at a node. That part needed no code; the garrison term was the whole of it.

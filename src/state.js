@@ -71,6 +71,17 @@ export const T = {
   // and never reads T.speed, so a slow host is pure cost to it. At footman parity
   // its two behemoth realms won 202 of 1200 games against the unicorn realms' 265.
   K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐘']],
+  // stamina, spent as fatigue. It runs 0-100 like unrest and is the one thing a
+  // host carries that is not derivable from the board — it is history, not state.
+  tread: 3 * P,     // gathered per tick on the march: a median road costs 20 of it,
+                    // so three crossings and a host wants a rest
+  brawl: 12 * P,    // gathered per tick in a fight — four times the price of walking,
+                    // and a fight runs long enough to leave the winner spent
+  rest: 10 * P,     // shed per tick standing still: 40 ticks to shake off a winding,
+                    // 100 from flat to fresh, against 60 to muster a warband
+  wind: 60,         // fatigue at which a host is winded and marches at half pace.
+                    // deliberately below the 100 cap, so a host that has fought
+                    // itself flat has to stand a good while before it moves freely
   amb: 0.6,          // how hard a speed advantage bites in an open-field fight
   home: 1.2,         // attack bonus for a host fighting at a city of its own realm
   wing: 0.15,       // share of a realm's war chest it will keep in flyers, no more
@@ -89,7 +100,7 @@ export const applyDiff = () => S.F.forEach(f => { f.dm = f.ai ? D[S.diff] : D[1]
 // --- game state -----------------------------------------------------------
 export const S = {
   C: [],      // cities  {x,y,nm,o,p,d,e,s,m,n[]}
-  A: [],      // armies  {o,w,a,t,pr,st}
+  A: [],      // armies  {o,w,a,t,pr,st,fg}
   F: [],      // factions{g,c,em,nm,ai,alive}
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}

@@ -1,5 +1,5 @@
 import { S, W, H, T } from './state.js'
-import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active, canRaise } from './sim.js'
+import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active, canRaise, tired } from './sim.js'
 import { blit, GROUND } from './terrain.js'
 
 export const cv = document.getElementById('cv')
@@ -179,6 +179,10 @@ export function draw (dt) {
     x.strokeStyle = k; x.lineWidth = 2; x.stroke()
     label(T.K[a.k][5], p.x, p.y + 1, 13)
     label(a.w | 0, p.x, p.y + 18, 11, k, 'bold ')
+    // fatigue, in the same amber a muster wears: an arc that fills as the host
+    // tires and closes on the tick it is winded. A fresh host draws nothing, so
+    // the board only carries the ring where it is telling you something
+    if (a.fg) ring(p.x, p.y, 15, a.fg / 100, tired(a) ? '#ff9a3c' : '#ffd76a99', 2)
     if (sel && sel.k === 'a' && sel.i === a.id) {
       x.setLineDash([3, 3]); x.beginPath(); x.arc(p.x, p.y, 17, 0, 6.2832)
       x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke(); x.setLineDash([])

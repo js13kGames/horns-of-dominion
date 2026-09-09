@@ -1,5 +1,5 @@
 import { S, T, dist } from './state.js'
-import { raise, fix, order, canRaise, canFix, pw, garrison } from './sim.js'
+import { raise, fix, order, canRaise, canFix, pw, garrison, rate, tired } from './sim.js'
 
 // an enemy host walking the road between i and j — a flyer's whole reason to exist
 const column = (i, j, f) => S.A.some(b => b.o !== f && b.t >= 0 &&
@@ -17,7 +17,7 @@ const sits = (i, f) => S.C[i].o === f && S.C[i].u > T.seize && held(i, f)
 // ticks for this host to walk to a neighbour, and the discount that puts on the
 // prize. T.muster is the yardstick: a march longer than raising a fresh warband
 // is worth about half as much. This is the only place the AI reads a road length
-const eta = (a, j) => dist(S.C[a.a], S.C[j]) / (T.speed * T.K[a.k][2])
+const eta = (a, j) => dist(S.C[a.a], S.C[j]) / rate(a)
 const soon = (a, j) => T.muster / (T.muster + eta(a, j))
 
 // one faction acts per turn, round-robin. how many decisions it gets on that
@@ -82,7 +82,9 @@ function step (f, F) {
   // otherwise take ground. a long war makes everyone bolder, so borders never freeze
   const bold = 1 + S.tick / T.bold
   for (const a of idle) {
-    if (sits(a.a, f)) continue           // it is the reason that city is quiet
+    if (sits(a.a, f) || tired(a)) continue   // holding a city quiet, or getting its breath
+                                             // back: a winded host marched at half
+                                             // pace is worth less than a rested one
     let best = -1, bs = 0
     for (const j of S.C[a.a].n) {
       const c = S.C[j], e = force(j, f)
