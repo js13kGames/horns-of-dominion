@@ -3,6 +3,17 @@ import { REALMS } from './map.js'
 import { mute, muted, chime } from './audio.js'
 import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity, tired } from './sim.js'
 
+// the calendar. 13 months of 28 days, so a year is 364 and the whole date is one
+// number — S.tick over T.day. Nothing stored, nothing to reset between games.
+const MON = 'Auriel Florin Rainmere Verdant Solara Lumin Hearth Aureon Fallow Mistral Ember Frost Lunaris'.split(' ')
+const days = () => S.tick / T.day | 0
+// the suffix only ever has to be right for 1 to 28, which is why % 20 is enough
+const ord = d => d + (d % 20 === 1 ? 'st' : d % 20 === 2 ? 'nd' : d % 20 === 3 ? 'rd' : 'th')
+const date = () => {
+  const n = days() % 364
+  return `${MON[n / 28 | 0]} ${ord(n % 28 + 1)}, year ${13312 + (days() / 364 | 0)} of the Mazurian Age`
+}
+
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast')
 export const hooks = {}
@@ -14,6 +25,7 @@ export function ui () {
   const F = S.F[S.me]
   set(hud, `<span style=color:${F.c}>${F.em} <b>${F.nm}</b></span>` +
     `<span>💎 <b>${F.g | 0}</b></span>` +
+    `<span class=dt><b>${date()}</b></span>` +   // .dt takes the slack: the date rides right, by the buttons
     `<div class=sp><button data-a=q>${muted ? '🔇' : '🔊'}</button>` +
     `${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
       .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
@@ -105,6 +117,7 @@ export function ending () {
     `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
     `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
     `<div><b>${t.most | 0}</b><span>${T.K[0][5]} largest host</span></div>` +
+    `<div><b>${days()}</b><span>📅 days</span></div>` +
     `</div><button data-a=n>🌈 New story</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }

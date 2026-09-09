@@ -48,6 +48,8 @@ export const T = {
   rot: 0.5 * P,     // wall points its holdings shed per tick while crumbling
   starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
   escal: 5000 / P,  // sieges grind faster every this many ticks
+  day: 1 / P,       // ticks in a day. 13 months of 28 days make a 364-day year,
+                    // and a p50 war runs about a year and a bit of them
   slow: 10,         // ticks between unrest checks — it is a slow-burning thing
   stir: 4.4 * P,    // unrest a conquered city gathers per check, at full strength
   pace: 8 * P,      // unrest a garrison puts down per check — it must beat `stir`,

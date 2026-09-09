@@ -12,7 +12,8 @@ body {
   backdrop-filter:blur(6px);
 }
 #hud b { font-weight:600; }
-.sp { margin-left:auto; display:flex; gap:4px; }
+.dt, .sp { margin-left:auto; }
+.sp { display:flex; gap:4px; }
 button {
   font:inherit; color:#e8e4f5; background:#241f38; border:1px solid #3a3358;
   border-radius:5px; padding:3px 9px; cursor:pointer;

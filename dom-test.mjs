@@ -99,6 +99,32 @@ ok(/💎/.test(els.hud.innerHTML), 'hud renders after start')
 ok(els.hud.innerHTML.includes(S.F[2].nm) && els.hud.innerHTML.includes(S.F[2].em),
   'hud names your realm')
 
+// the calendar is S.tick over T.day and nothing else, so it can be read off a
+// tick count set by hand. Ticks are stopped and the count put back afterwards,
+// or every escal- and bold-scaled number below would move with it
+const tickWas = S.tick, speedWas = S.speed
+S.speed = 0
+const on = (t, d) => {
+  S.tick = t * T.day; step(1)
+  ok(els.hud.innerHTML.includes('<b>' + d + ' of the Mazurian Age</b>'), d)
+}
+on(0, 'Auriel 1st, year 13312')
+on(1, 'Auriel 2nd, year 13312')
+on(2, 'Auriel 3rd, year 13312')
+on(10, 'Auriel 11th, year 13312')          // not 11st, which is what % 10 would give
+on(20, 'Auriel 21st, year 13312')
+on(27, 'Auriel 28th, year 13312')
+on(28, 'Florin 1st, year 13312')
+on(363, 'Lunaris 28th, year 13312')
+on(364, 'Auriel 1st, year 13313')
+// and it rides on the right, by the speed buttons: .dt takes the slack, so the
+// gold stays left and the date lands next to the controls
+const hudH = els.hud.innerHTML
+ok(/class=dt><b>/.test(hudH), 'the date carries the class that pushes it right')
+ok(hudH.indexOf('💎') < hudH.indexOf('Mazurian') && hudH.indexOf('Mazurian') < hudH.indexOf('data-a=q'),
+  'and sits after the gold and before the buttons')
+S.tick = tickWas; S.speed = speedWas; step(1)
+
 const g0 = S.F[2].g
 step(120)                              // ~2s -> 4 ticks
 ok(S.tick > 0, 'ticks advance: ' + S.tick)
@@ -502,6 +528,9 @@ ok(made[CLASH].paused, 'and the din stops with the game')
 ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
 ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
 ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
+ok(/📅 days/.test(els.ov.innerHTML) &&
+  els.ov.innerHTML.includes('<b>' + (S.tick / T.day | 0) + '</b><span>📅 days</span>'),
+  `and scores the campaign in days (${S.tick / T.day | 0})`)
 const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Horns of Dominion'), 'restart returns to the title')
