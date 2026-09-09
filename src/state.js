@@ -62,7 +62,7 @@ export const T = {
   // property names, so `K[k][0]` ships one character where `K[k].pow` ships four
   // at every read site. footman is all 1.0 and priced as an army always was, so a
   // board with no specialist cities behaves numerically exactly like the old game.
-  //   [field power, wall power, march speed, gold, pop, glyph]
+  //   [field power, wall power, march speed, gold, pop, glyph, name]
   //   0 footmen, raised anywhere · 1 unicorns, the flyer · 2 behemoths, the ram.
   // Glyphs must be *light*: a host is drawn on a near-black disc, so 🦅 and 🐎
   // came out as dark smudges at 13px and were rejected on looking at them.
@@ -70,7 +70,8 @@ export const T = {
   // that pays for a drawback the AI cannot manage: it scores targets by adjacency
   // and never reads T.speed, so a slow host is pure cost to it. At footman parity
   // its two behemoth realms won 202 of 1200 games against the unicorn realms' 265.
-  K: [[1, 1, 1, 25, 40, '🔱'], [0.6, 0.5, 1.9, 45, 35, '🦄'], [2.2, 2.5, 0.55, 50, 45, '🐘']],
+  K: [[1, 1, 1, 25, 40, '🔱', 'Footmen'], [0.6, 0.5, 1.9, 45, 35, '🦄', 'Unicorns'],
+    [2.2, 2.5, 0.55, 50, 45, '🐘', 'Behemoths']],
   // stamina, spent as fatigue. It runs 0-100 like unrest and is the one thing a
   // host carries that is not derivable from the board — it is history, not state.
   tread: 3 * P,     // gathered per tick on the march: a median road costs 20 of it,

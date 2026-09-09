@@ -1,7 +1,7 @@
 import { S, T, D } from './state.js'
 import { REALMS } from './map.js'
 import { mute, muted, chime } from './audio.js'
-import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity } from './sim.js'
+import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity, tired } from './sim.js'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast')
@@ -50,15 +50,28 @@ export function ui () {
 
   const a = getArmy(s.i)
   if (!a) { S.sel = null; return set(pan, '') }
-  if (a.o !== S.me || !canSplit(a)) return set(pan, '')
-  set(pan, `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
-    `${btn('x', 0, 1, '✂️ Split')}</div>`)
+  // what the map cannot say: how spent the host is, and what its kind is for.
+  // Every host you can select is one you can already see, and its bodies and its
+  // fatigue ring are drawn on the disc, so an enemy's card leaks nothing new.
+  // A multiplier of 1 is the footman baseline and prints no row at all.
+  const K = T.K[a.k], sp = K[2]
+  set(pan, `<h3>${K[5]} ${K[6]}</h3>` +
+    row('⚔️ Warriors', a.w | 0) +
+    row('💤 Stamina', '<b id=st></b>') +
+    mult('💥 Field', K[0]) + mult('🧱 Siege', K[1]) + mult('🐾 March', sp) +
+    mult('🏹 Ambush', +(1 + (sp - 1) * T.amb).toFixed(2)) +
+    (a.o === S.me && canSplit(a)
+      ? `<div class=acts><div class=sr><input type=range id=sl><b id=slv></b></div>` +
+        `${btn('x', 0, 1, '✂️ Split')}</div>`
+      : ''))
   sync(a)
 }
 
 // the slider is kept OUT of the diffed string on purpose — writing its value
 // imperatively means dragging never rewrites the panel underneath the drag
 function sync (a) {
+  const st = $('st')
+  if (st) st.textContent = 100 - (a.fg | 0) + '%' + (tired(a) ? ' — winded' : '')
   const sl = $('sl')
   if (!sl) return
   const max = Math.floor(a.w) - 1
@@ -70,6 +83,8 @@ function sync (a) {
 }
 
 const row = (k, v) => `<div class=r><span>${k}</span><span>${v}</span></div>`
+// a kind's edge over a footman, and nothing where it has none
+const mult = (k, v) => v === 1 ? '' : row(k, '×' + v)
 
 export function title () {
   ov.innerHTML = `<h1>Horns of Dominion</h1>` +

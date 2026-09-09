@@ -178,8 +178,27 @@ tap(army.rx, army.ry)
 ok(S.sel && S.sel.k === 'a' && S.sel.i === army.id, 'clicking a warband selects it')
 ok(played.includes(CHIME), 'and picking it up chimes')
 ok(active() === army, 'and that alone puts it under command')
-ok(!/Banner|Warriors|Status|Bound for/.test(els.pan.innerHTML),
-  'the panel carries no readout — banner, strength and march are all on the map')
+// the warband card is back, and it carries the two things the map cannot say in
+// numbers: how many bodies are left and how spent they are. The march is still
+// the map's to tell — a dashed path to a lit destination — so it stays out
+ok(els.pan.innerHTML.includes(T.K[army.k][6]), 'a selected warband names its kind')
+ok(els.pan.innerHTML.includes('⚔️ Warriors</span><span>' + (army.w | 0)), 'and counts its warriors')
+ok(/💤 Stamina/.test(els.pan.innerHTML), 'and carries a stamina row')
+ok(els.st.textContent === 100 - (army.fg | 0) + '%',
+  `whose number is written live, out of the diffed string (${els.st.textContent})`)
+ok(!/Banner|Status|Bound for/.test(els.pan.innerHTML),
+  'but no banner and no march readout — the map says both')
+ok(army.k === 0 && !/×/.test(els.pan.innerHTML),
+  'and a footman host prints no multiplier at all: it is the baseline')
+
+// the multipliers are read off T.K rather than spelled out per kind, so a kind
+// that is better at something says so and one that is worse says that too
+army.k = 2; step(1)
+ok(els.pan.innerHTML.includes('🧱 Siege</span><span>×' + T.K[2][1]), 'a behemoth advertises its siege weight')
+ok(els.pan.innerHTML.includes('🐾 March</span><span>×' + T.K[2][2]), 'and the march that pays for it')
+ok(/🏹 Ambush<\/span><span>×0\.73/.test(els.pan.innerHTML),
+  'and the ambush penalty a slow host takes on a road')
+army.k = 0; step(1)
 
 const dest = S.C[mine].n[0]
 played.length = 0
@@ -307,9 +326,19 @@ S.speed = 4
 step(20)
 S.sel = { k: 'a', i: 5002 }
 step(2)
-ok(!/Banner|Warriors|Status/.test(els.pan.innerHTML), 'nor for a host in a fight')
+// a host in a fight still reports itself — it just cannot be split. This is the
+// case that used to answer with a blank panel and read as a bug
+ok(/⚔️ Warriors/.test(els.pan.innerHTML), 'a host in a fight still reports itself')
+ok(/Split/.test(els.pan.innerHTML), 'and a fight at a city does not stop you dividing it')
+// the road lock is what does. Ticks are stopped for this so the sim cannot clear
+// the flag between the write and the render
+S.speed = 0
+S.A.find(a => a.id === 5002).st = 1; step(1)
+ok(!/Split/.test(els.pan.innerHTML), 'but a host locked in a road melee cannot be split')
+S.A.find(a => a.id === 5002).st = 0; step(1); S.speed = 4
 S.sel = { k: 'a', i: 5003 }; step(1)
-ok(els.pan.innerHTML === '', 'and an enemy host gets no panel at all')
+ok(/⚔️ Warriors/.test(els.pan.innerHTML) && !/Split/.test(els.pan.innerHTML),
+  'an enemy host reports the same numbers its disc already draws, and no Split')
 S.sel = { k: 'a', i: 5002 }; step(1)
 const eng = S.A.find(a => a.id === 5002)
 ok(eng && eng.eg && eng.eg.length >= 2, 'and the engagement is recorded, so the map can ring it')
