@@ -53,7 +53,7 @@ globalThis.Audio = class {
 
 const { S, T } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
-const { cityR } = await import('./src/render.js')
+const { cityR, V } = await import('./src/render.js')
 await import('./src/main.js')
 
 const step = (n, ms = 16.7) => {
@@ -73,11 +73,11 @@ const click = (a, i) => {
   const el = { dataset: { a, i: String(i) }, closest: () => el }
   win.h.click({ target: el })
 }
-const tap = (wx, wy) => {  // world coords -> screen
-  const s = Math.min(1280 / 1000, 800 / 700) * 0.72
-  const oy = -70 * s
-  els.cv.h.pointerdown({ clientX: wx * s + (1280 - 1000 * s) / 2, clientY: wy * s + (800 - 700 * s) / 2 + oy })
-}
+// world coords -> screen, off the live view rather than a second copy of the
+// projection: this used to restate the scale and offsets and went stale the
+// day they changed
+const tap = (wx, wy) =>
+  els.cv.h.pointerdown({ clientX: wx * V.s + V.ox, clientY: wy * V.s + V.oy })
 
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }

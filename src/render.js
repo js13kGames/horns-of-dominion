@@ -1,23 +1,21 @@
 import { S, W, H, T } from './state.js'
 import { getArmy, prog, hop, seeCity, seeRoad, seeArmy, besieged, unrest, active, canRaise } from './sim.js'
-import { blit } from './terrain.js'
+import { blit, GROUND } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
 export const V = { s: 1, ox: 0, oy: 0 }
-let sky                                    // rebuilt on resize, painted in device pixels
 
 export function resize () {
   const dpr = Math.min(devicePixelRatio || 1, 2)
   const w = innerWidth, h = innerHeight
   cv.width = w * dpr; cv.height = h * dpr
   x.setTransform(dpr, 0, 0, dpr, 0, 0)
-  V.s = Math.min(w / W, h / H) * 0.72   // leave sky around the island
+  // the land fills the frame, so the map wants the frame: no sky to leave and
+  // nothing below to make room for, only a margin so no city sits on the edge
+  V.s = Math.min(w / W, h / H) * 0.92
   V.ox = (w - W * V.s) / 2
-  V.oy = (h - H * V.s) / 2 - 70 * V.s   // ride high: the rock below needs the room
-  sky = x.createLinearGradient(0, 0, 0, cv.height)   // low sun: the glow band sits
-  for (const [o, c] of [[0, '#191038'], [0.42, '#5d2b4e'],   // behind the island's flanks
-    [0.66, '#c96a40'], [0.84, '#5a2733'], [1, '#22111f']]) sky.addColorStop(o, c)
+  V.oy = (h - H * V.s) / 2
 }
 export const toWorld = (px, py) => ({ x: (px - V.ox) / V.s, y: (py - V.oy) / V.s })
 
@@ -85,7 +83,7 @@ export function draw (dt) {
   place(dt)
   const w = cv.width, h = cv.height
   x.save(); x.setTransform(1, 0, 0, 1, 0, 0)
-  x.fillStyle = sky; x.fillRect(0, 0, w, h)
+  x.fillStyle = GROUND; x.fillRect(0, 0, w, h)   // more of the same field, past the bake
   x.restore()
   x.save(); x.translate(V.ox, V.oy); x.scale(V.s, V.s)
   blit(x)

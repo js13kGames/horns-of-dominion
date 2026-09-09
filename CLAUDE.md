@@ -45,7 +45,7 @@ There is no test runner. Each harness is a standalone `.mjs` that imports the re
 Two more that inspect rather than assert:
 
     node shot.mjs [seed] [frames] [out.svg]   # render one frame to SVG — see "Visual work" below
-    node geo.mjs  [seeds]                     # every city on the island? feature counts? forest cover?
+    node geo.mjs  [seeds]                     # features right across the frame? counts? forest cover?
 
 **Run each separately and check `$?`.** Chaining with `&&` and piping to `tail` has masked a non-zero exit here before.
 
@@ -73,7 +73,7 @@ Three things are deliberately **pure functions of the current board**, with noth
 
 - **Fog of war** (`seeCity` / `seeRoad` / `seeArmy` in `sim.js`). Reveals last only while a host is present. The fog hides intel *and* battle effects and capture flashes — but never geography, which greys out instead; fogged roads go dotted rather than dim. The AI plays with full information.
 - **Command** (`active()` in `sim.js`). Selecting one of your own warbands *is* what puts it under command; there is no separate targeting flag.
-- **Terrain** (`src/terrain.js`). The island silhouette is derived from the current map's city positions.
+- **Terrain** (`src/terrain.js`). Nothing about the field is stored on the map; it is baked from `S.seed` alone, and only the peaks read the cities at all — to keep off them.
 
 Because fog touches nothing in the simulation, `sim-test.mjs` must return **numerically identical** results before and after any fog change. That invariant is the strongest available proof of non-interference — use it.
 
@@ -87,11 +87,17 @@ Click one of your hosts and it is under command (the canvas cursor becomes a cro
 
 ### The backdrop is baked
 
-`terrain.js` renders the whole floating island — coastline, cliffs, the rock underside, mountains, woods — once per map into an offscreen canvas at `paint()`, called from `fresh()` in `main.js`. The live frame pays one `drawImage` and nothing else, so detail inside `paint()` is free.
+`terrain.js` renders the ground — grass, woods, mountains — once per map into an offscreen canvas at `paint()`, called from `fresh()` in `main.js`. The live frame pays one `drawImage` and nothing else, so detail inside `paint()` is free.
 
 Terrain runs **its own RNG**, seeded off `S.seed`. It must never draw from `state.js`'s `rnd()`, or the browser's simulation would drift away from the headless harnesses and every balance number would stop meaning anything.
 
-The coastline traces the convex hull of the cities (a ray hits the hull at `min(support(φ)/cos(θ−φ))` over the sampled supporting lines), leaning partway back toward the raw support so it doesn't come out a rectangle. The skirt on top is floored — cities sit *on* the hull, so a negative margin would leave one standing in the sea. The rock underside is seven copies of that same coastline, scaled about the centroid and stacked downward; the jagged coast is what makes them read as strata.
+**The land has no edge.** Round 21 deleted the floating island — the convex-hull coastline, the cliff band, the seven stacked copies of it that made the rock underside, the drifting rubble, and the sunset gradient behind it all. What replaced it is a field: `paint()` fills a rect that runs 500 world units past the map on every side, mottles it with soft patches of lighter and darker grass, and scatters 165 woods and up to 13 peaks across the whole of it. The map is 1000×700; the bake is 2000×1560, so on any ordinary screen the ground leaves the frame instead of ending in it. **That is why `GROUND` is exported and `render.js` clears the frame to it** — a viewport too tall or too wide for the bake runs out into more of the same colour, with no seam to see. Do not put a gradient on the field for that reason: any gradient baked into the ground would have to end at the bake edge and the join would show.
+
+A screen-space vignette was built and measured and then **rejected on price**: a radial gradient made in `resize()` and laid over the ground right after `blit` — before any road, city or host, so it dimmed only the backdrop — read well and had no seam, because it never touched the bake. It cost **67 B**. That is the going rate if the flat frame ever needs weight again; it was not worth it at 612 B of headroom.
+
+Two consequences of losing the coast. **`inside()` is gone, and with it every clip and rejection test that referenced it** — woods no longer have to check that a canopy blob is on land, which is what the old comment about never slicing a canopy flat along a cliff was protecting. And the view changed with it: `resize()` scales the map at **0.92** of the frame rather than 0.72, and the `-70` upward nudge that made room for the rock below is gone, because there is no longer anything to centre the island in.
+
+The peaks kept all their clearance rules — 44 + extent from a city, 20 + a third of the extent from a road, 74 from each other, and they must stand in a wood — because a mountain is a silhouette that would otherwise swallow a road. Woods deliberately do not: they run under roads and cities, which are drawn over the backdrop anyway. `geo.mjs` measures exactly that split and is the tool for judging a terrain change: forest cover sits at **p10 42% / median 49% / p90 53%** over 200 seeds, 13 peaks a seed, and it fails loudly if any cell of a 4×3 grid over the visible frame comes up with no canopy in it.
 
 ### Three kinds of warband
 
@@ -271,6 +277,6 @@ Almost everything a panel might report is already on the map: ownership is the r
 
 **AI movement is the highest-risk code in the repo.** Past regressions include 13,000-warrior frozen stacks with 400/400 timeouts, and total gridlock from a movement gate. Change `ai.js` only with a full balance re-run. The AI never splits hosts — measured, and not a bug to fix without evidence. It *does* garrison, as of round 21, and the evidence that justified writing that was concrete: doubling `T.stir` gave it a way to lose cities it had no way to answer.
 
-**Visual work has no browser.** There is no headless browser available, so `shot.mjs` is how you actually look at a change: it drives the real game against a recording 2D context and re-emits a frame as SVG, which `qlmanage -t` rasterises into something readable. Rendering blind has repeatedly shipped mistakes that were obvious the moment the frame was looked at — a rainbow entirely hidden behind the island, mountains swallowed by their own tree line, labels invisible on bright grass.
+**Visual work has no browser.** There is no headless browser available, so `shot.mjs` is how you actually look at a change: it drives the real game against a recording 2D context and re-emits a frame as SVG, which `qlmanage -t` rasterises into something readable. Rendering blind has repeatedly shipped mistakes that were obvious the moment the frame was looked at — a rainbow entirely hidden behind the island, back when there was one, mountains swallowed by their own tree line, labels invisible on bright grass.
 
 `prompts.txt` is the running log of feature requests; `plan*.md` are per-round plans. Both keep the game's former name, *Unicorn Overlord*, on purpose — they record what was asked at the time, not living documentation. `README.md` is player-facing but currently lags the code: it still describes the event log, the Turn back button and the battle roster, all removed.
