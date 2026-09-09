@@ -1,5 +1,5 @@
 import { S, T, D } from './state.js'
-import { REALMS } from './map.js'
+import { REALMS, SCN } from './map.js'
 import { mute, muted, chime } from './audio.js'
 import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity, tired } from './sim.js'
 
@@ -9,10 +9,12 @@ const MON = 'Auriel Florin Rainmere Verdant Solara Lumin Hearth Aureon Fallow Mi
 const days = () => S.tick / T.day | 0
 // the suffix only ever has to be right for 1 to 28, which is why % 20 is enough
 const ord = d => d + (d % 20 === 1 ? 'st' : d % 20 === 2 ? 'nd' : d % 20 === 3 ? 'rd' : 'th')
-const date = () => {
-  const n = days() % 364
-  return `${MON[n / 28 | 0]} ${ord(n % 28 + 1)}, year ${13312 + (days() / 364 | 0)} of the Mazurian Age`
-}
+// the campaign's own days are the score; the scenario's first day only shifts
+// what the calendar calls them
+// any day since the epoch, spelled out — the hud asks for today, a scenario card
+// asks for the day it opens on
+const at = d => `${MON[d % 364 / 28 | 0]} ${ord(d % 28 + 1)}, year ${13312 + (d / 364 | 0)}`
+const date = () => at(days() + S.d0) + ' of the Mazurian Age'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast')
@@ -101,10 +103,16 @@ const mult = (k, v) => v === 1 ? '' : row(k, '×' + v)
 export function title () {
   ov.innerHTML = `<h1>Horns of Dominion</h1>` +
     `<p>Raise warbands and conquer the Rainbow Kingdom.</p>` +
+    `<h2>Scenario</h2>` +
+    `<div class=realms>${SCN.map(([nm, sd, d0], i) =>
+      `<div class="realm${S.scn === i ? ' on' : ''}" data-a=c data-i=${i}>` +
+      `<div class=e>${'I'.repeat(i + 1)}</div><div class=n>${nm}</div><div class=c>${at(d0)}</div></div>`).join('')}</div>` +
+    `<h2>Kingdom</h2>` +
+    `<div class=realms>${REALMS.map(([nm, c, em], i) =>
+      `<div class="realm${S.me === i ? ' on' : ''}" data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n>${nm}</div></div>`).join('')}</div>` +
     `<div class=diff>${D.map((d, i) =>
       `<button data-a=d data-i=${i} class="${S.diff === i ? 'on' : ''}">${d.nm}</button>`).join('')}</div>` +
-    `<div class=realms>${REALMS.map(([nm, c, em], i) =>
-      `<div class=realm data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n style=color:${c}>${nm}</div></div>`).join('')}</div>` +
+    `<button data-a=b>⚔️ Start</button>` +
     `<p style=opacity:.4>space pauses · 1 2 3 set speed</p>`
 }
 
@@ -135,7 +143,7 @@ addEventListener('click', e => {
   const a = el.dataset.a, i = +el.dataset.i
   // every button that commits to something. not the realm card: the song comes
   // up over it and the chime is inaudible under it
-  if ('rgxfdv'.includes(a)) chime()
+  if ('rgxfdvsc'.includes(a)) chime()
   if (a === 'r') raise(i, S.me)
   else if (a === 'g') raise(i, S.me, S.C[i].sp)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
@@ -143,7 +151,9 @@ addEventListener('click', e => {
   else if (a === 'q') mute()
   else if (a === 'v') S.speed = i
   else if (a === 'd') { S.diff = i; title() }
-  else if (a === 's') hooks.start(i)
+  else if (a === 'c') { S.scn = i; hooks.again() }   // a new age: rebuild the board under the title
+  else if (a === 'b') hooks.start(S.me)             // the kingdom is chosen; this commits
+  else if (a === 's') { S.me = i; title() }
   else if (a === 'n') hooks.again()
   ui()
 })

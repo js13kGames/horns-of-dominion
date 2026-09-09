@@ -38,15 +38,20 @@ const js = html.split('<script>')[1].split('</script>')[0]
 new Function(js)()
 
 ok(/Horns of Dominion/.test(els.ov.innerHTML), 'minified bundle boots to the title screen')
-const el = { dataset: { a: 's', i: '1' }, closest: () => el }
-win.h.click({ target: el })
-ok(els.ov.innerHTML === '', 'realm pick starts the game')
+const tap = (a, i) => {
+  const el = { dataset: { a, i }, closest: () => el }
+  win.h.click({ target: el })
+}
+tap('s', '1')                                   // the kingdom is a selection...
+ok(els.ov.innerHTML !== '', 'realm pick alone does not start the game')
+tap('b')                                        // ...and Start commits it
+ok(els.ov.innerHTML === '', 'Start clears the title and starts the game')
 let t = 0
 for (let i = 0; i < 200; i++) { const q = rafq; rafq = []; t += 100; q.forEach(f => f(t)) }
 ok(/💎/.test(els.hud.innerHTML), 'hud alive in the minified build')
 ok(/🔴|🟠|🟢|🔵|🟣/.test(els.hud.innerHTML), 'standings render')
-// the seed is unpinned here, so which realms are in view varies run to run —
-// but the player always holds the two cities their own realm breeds at
+// the board is scenario I now, so this is the same map every run — but the
+// assertion holds for any of them: a realm always breeds at two of its cities
 ok(drew.some(t => t === '🦄' || t === '🐘'),
   'a specialist glyph survives the pack and reaches the canvas')
 console.log(fail ? '\nFAILURES' : '\nall good')

@@ -11,6 +11,16 @@ export const REALMS = [
   ['Violet Veil', '#b57bff', '🟣']
 ]
 
+// Three fixed starts, and nothing else: a scenario is a seed and a date. The seed
+// is what makes two players' campaigns comparable; the date is what makes them
+// feel like different ages of the same world. Random rolls a seed and opens on
+// the epoch itself. [name, seed, days since the epoch at first light]
+export const SCN = [
+  ['Rise of the Golden Horn', 1098, 190],   // Hearth 23rd, 13312 — tight and well linked, every realm a neighbour
+  ['The Broken Accord', 1364, 245485],      // Lumin 10th, 13986 — strung out, and it comes apart at two cities
+  ['The Radiant Spire', 1337, 250892]       // Verdant 13th, 14001 — the most roads on the board, and the longest
+]
+
 const ccw = (a, b, c) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
 const crosses = (a, b, c, d) => ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d)
 

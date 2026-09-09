@@ -54,6 +54,7 @@ globalThis.Audio = class {
 const { S, T } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
 const { cityR, V } = await import('./src/render.js')
+const { SCN } = await import('./src/map.js')
 await import('./src/main.js')
 
 const step = (n, ms = 16.7) => {
@@ -83,7 +84,7 @@ let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
 
 ok(/Horns of Dominion/.test(els.ov.innerHTML), 'title screen renders')
-ok(els.ov.innerHTML.split('class=realm ').length === 6, 'five realm cards offered')
+ok(els.ov.innerHTML.split('data-a=s ').length === 6, 'five realm cards offered')
 
 ok(/data-a=d/.test(els.ov.innerHTML), 'title offers difficulty rungs')
 click('d', 3)
@@ -91,8 +92,27 @@ ok(S.diff === 3, 'picking a rung sets it')
 click('d', 2)
 ok(S.diff === 2, 'and the default rung is the third')
 
+// a scenario is a seed and a date and nothing else, so it can be checked as two
+// numbers. There is no random age any more: the board is always one of the three,
+// which is what finally makes this whole file deterministic
+ok(els.ov.innerHTML.split('data-a=c').length === 4, 'title offers three scenarios')
+ok(els.ov.innerHTML.includes('<div class=e>III</div>'), 'each carrying its numeral')
+ok(els.ov.innerHTML.includes('Hearth 23rd, year 13312'), 'and the date it opens on')
+click('c', 1)
+ok(S.scn === 1 && S.seed === SCN[1][1], `picking one fixes the seed (${SCN[1][1]})`)
+ok(S.d0 === SCN[1][2], 'and the day its calendar opens on')
+click('c', 0)
+ok(S.scn === 0 && S.seed === SCN[0][1] && S.d0 === SCN[0][2], 'and another swaps both again')
+ok(/class="realm on" data-a=c data-i=0/.test(els.ov.innerHTML), 'the chosen scenario is marked')
+
+// the kingdom is a selection now; Start is what commits
 click('s', 2)
-ok(S.me === 2 && !S.F[2].ai && !!S.F[0].ai, 'picking a realm sets the player faction')
+ok(S.me === 2 && els.ov.innerHTML !== '', 'picking a realm selects it and does not start the game')
+// keyed to the card that picks a kingdom: both decks are .realm, and the chosen
+// scenario wears the same 'on', so a bare /realm on/ would pass without this
+ok(/class="realm on" data-a=s data-i=2/.test(els.ov.innerHTML), 'and the chosen kingdom is marked')
+click('b')
+ok(S.me === 2 && !S.F[2].ai && !!S.F[0].ai, 'Start commits it and sets the player faction')
 ok(els.ov.innerHTML === '', 'overlay cleared on start')
 step(3)
 ok(/💎/.test(els.hud.innerHTML), 'hud renders after start')
@@ -102,8 +122,8 @@ ok(els.hud.innerHTML.includes(S.F[2].nm) && els.hud.innerHTML.includes(S.F[2].em
 // the calendar is S.tick over T.day and nothing else, so it can be read off a
 // tick count set by hand. Ticks are stopped and the count put back afterwards,
 // or every escal- and bold-scaled number below would move with it
-const tickWas = S.tick, speedWas = S.speed
-S.speed = 0
+const tickWas = S.tick, speedWas = S.speed, d0Was = S.d0
+S.speed = 0; S.d0 = 0
 const on = (t, d) => {
   S.tick = t * T.day; step(1)
   ok(els.hud.innerHTML.includes('<b>' + d + ' of the Mazurian Age</b>'), d)
@@ -123,7 +143,14 @@ const hudH = els.hud.innerHTML
 ok(/class=dt><b>/.test(hudH), 'the date carries the class that pushes it right')
 ok(hudH.indexOf('💎') < hudH.indexOf('Mazurian') && hudH.indexOf('Mazurian') < hudH.indexOf('data-a=q'),
   'and sits after the gold and before the buttons')
-S.tick = tickWas; S.speed = speedWas; step(1)
+// a scenario shifts only what the calendar calls the day. Both dates below are
+// worked out by hand from its offset, not re-derived from the code
+S.d0 = SCN[1][2]; S.tick = 0; step(1)
+ok(els.hud.innerHTML.includes('<b>Lumin 10th, year 13986 of the Mazurian Age</b>'),
+  'a scenario opens the calendar on its own date')
+S.tick = 27 * T.day; step(1)
+ok(els.hud.innerHTML.includes('<b>Hearth 9th, year 13986'), 'and the months run on from there')
+S.tick = tickWas; S.speed = speedWas; S.d0 = d0Was; step(1)
 
 const g0 = S.F[2].g
 step(120)                              // ~2s -> 4 ticks
@@ -534,15 +561,20 @@ ok(/📅 days/.test(els.ov.innerHTML) &&
 const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Horns of Dominion'), 'restart returns to the title')
-ok(S.seed !== seedWas && location.hash === '#' + S.seed, 'restart rerolls the map and publishes the seed')
+ok(S.seed === seedWas && location.hash === '#' + S.seed,
+  'restart rebuilds the same scenario and publishes its seed')
 
 // --- the other ending, forced ----------------------------------------------
 // a natural run reaches exactly one of the two, so the fanfare check above is
 // only ever half a test. take the whole board and the other half runs too
 played.length = 0
 click('s', S.me)
+ok(played.includes(CHIME) && !played.includes(SONG),
+  'picking a kingdom chimes, with no song coming up to drown it')
+played.length = 0
+click('b')
 ok(!played.includes(CHIME) && played.includes(SONG),
-  'picking a realm brings the song up and does not chime under it')
+  'and Start brings the song up instead, which is why it does not chime under it')
 step(2)
 S.C.forEach(c => { c.o = S.me })
 S.fx = [{ x: S.C[0].x, y: S.C[0].y, k: 1, l: 1 }]   // and a fight still on screen

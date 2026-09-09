@@ -1,5 +1,5 @@
 import { S, applyDiff } from './state.js'
-import { genMap } from './map.js'
+import { genMap, SCN } from './map.js'
 import { tick, order, seeArmy, active, fighting } from './sim.js'
 import { ai } from './ai.js'
 import { resize, draw, toWorld, cityR, cv } from './render.js'
@@ -14,7 +14,9 @@ let boot = 1
 function fresh () {
   const h = boot ? parseInt(location.hash.slice(1)) : 0   // honour a shared seed once, then reroll
   boot = 0
-  genMap(h > 0 ? h : (Math.random() * 1e9) | 0)
+  const c = SCN[S.scn]                       // a scenario is a fixed seed and a start date
+  genMap(h > 0 ? h : c[1])                   // a seed in the URL still overrides it, once
+  S.d0 = c[2]
   paint()
   location.hash = S.seed
 }
