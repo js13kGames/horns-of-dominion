@@ -4,7 +4,9 @@ body {
   font:13px/1.45 ui-sans-serif,system-ui,sans-serif;
   -webkit-user-select:none; user-select:none;
 }
-#cv { position:fixed; inset:0; width:100%; height:100%; display:block; }
+/* touch-action:none, or the browser eats a drag as a scroll and a pinch as a
+   page zoom before the canvas ever hears about either */
+#cv { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 #hud, #pan, #toast, #tip { position:fixed; }
 #hud {
   top:0; left:0; right:0; height:34px; display:flex; align-items:center; gap:14px;
@@ -69,3 +71,17 @@ button.on { background:#4a3d7a; border-color:#7a68b8; }
 .realm .e { font-size:25px; }
 .realm .n { font-weight:600; margin-top:3px; }
 .realm .c { opacity:.55; font-size:11px; }
+
+/* A phone. The board fits the frame's height and pans across its width, so the
+   chrome has to leave that width alone: the status wraps onto a second line and
+   the panel drops to the bottom edge, where a thumb already is. Everything a
+   finger has to hit grows with it; nothing here reaches a desktop frame. */
+@media (max-width:700px) {
+  #hud { height:auto; flex-wrap:wrap; gap:5px 10px; padding:5px 8px; }
+  .ag { display:none; }             /* "of the Mazurian Age" — the date alone fits */
+  .sp { flex-basis:100%; margin-left:0; }    /* the speed row, full width, on its own */
+  .sp button, #pan button { padding:8px 6px; }
+  .sp button { flex:1; }
+  #toast { top:78px; }              /* clear of a status that is two rows tall now */
+  #pan { top:auto; bottom:8px; left:8px; right:8px; width:auto; }
+}

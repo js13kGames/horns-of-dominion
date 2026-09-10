@@ -4,7 +4,9 @@ import { blit, GROUND } from './terrain.js'
 
 export const cv = document.getElementById('cv')
 const x = cv.getContext('2d')
-export const V = { s: 1, ox: 0, oy: 0 }
+// the camera: the pair of offsets the projection already used, plus the scale
+// that shows the whole board — the floor a pinch can zoom out to
+export const V = { s: 0, ox: 0, oy: 0, lo: 1 }
 
 export function resize () {
   const dpr = Math.min(devicePixelRatio || 1, 2)
@@ -12,10 +14,40 @@ export function resize () {
   cv.width = w * dpr; cv.height = h * dpr
   x.setTransform(dpr, 0, 0, dpr, 0, 0)
   // the land fills the frame, so the map wants the frame: no sky to leave and
-  // nothing below to make room for, only a margin so no city sits on the edge
-  V.s = Math.min(w / W, h / H) * 0.92
-  V.ox = (w - W * V.s) / 2
-  V.oy = (h - H * V.s) / 2
+  // nothing below to make room for, only a margin so no city sits on the edge.
+  // But a frame taller than it is wide — a phone — used to squeeze the whole
+  // board into its narrow axis and leave the height empty, at a scale that puts
+  // a city's name four pixels tall. There the height is what gets fitted and
+  // the player pans across the width, capped so a very tall frame does not zoom
+  // until one city fills it. On any landscape frame min() is already h / H, so
+  // this is the old rule exactly and the desktop view has not moved.
+  const first = !V.s
+  V.lo = Math.min(w / W, h / H) * 0.92
+  V.s = first ? Math.max(V.lo, Math.min(h / H, 1.5) * 0.92)
+    : Math.min(2.5, Math.max(V.lo, V.s))   // a resize keeps the player's zoom: a
+  if (first) gaze(W / 2, H / 2); else look()   // phone fires one per URL bar
+}
+
+// the offsets are clamped so the board can never be dragged clean out of the
+// frame, and pinned dead centre on any axis it already fits — which is both
+// axes on a desktop frame, so the projection there is what it always was
+const cl = (v, c, m) => Math.max(c - m, Math.min(c + m, v))
+function look () {
+  const w = innerWidth, h = innerHeight
+  V.ox = cl(V.ox, (w - W * V.s) / 2, Math.max(0, (W * V.s - w) / 2))
+  V.oy = cl(V.oy, (h - H * V.s) / 2, Math.max(0, (H * V.s - h) / 2))
+}
+
+export const pan = (dx, dy) => { V.ox += dx; V.oy += dy; look() }
+export const gaze = (gx, gy) => {
+  V.ox = innerWidth / 2 - gx * V.s; V.oy = innerHeight / 2 - gy * V.s; look()
+}
+// zoom about a screen point, so the ground under the fingers stays under them
+export function zoom (k, px, py) {
+  const s = Math.min(2.5, Math.max(V.lo, V.s * k)), r = s / V.s
+  V.ox = px - (px - V.ox) * r; V.oy = py - (py - V.oy) * r
+  V.s = s
+  look()
 }
 export const toWorld = (px, py) => ({ x: (px - V.ox) / V.s, y: (py - V.oy) / V.s })
 

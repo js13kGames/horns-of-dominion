@@ -2,7 +2,7 @@ import { S, applyDiff } from './state.js'
 import { genMap, SCN } from './map.js'
 import { tick, order, seeArmy, active, fighting } from './sim.js'
 import { ai } from './ai.js'
-import { resize, draw, toWorld, cityR, cv } from './render.js'
+import { resize, draw, toWorld, cityR, cv, pan, zoom, gaze } from './render.js'
 import { paint } from './terrain.js'
 import { ui, title, ending, clearOv, hooks } from './ui.js'
 import { grind, music, mute, chime, fanfare, clash } from './audio.js'
@@ -24,6 +24,11 @@ hooks.start = f => {
   S.me = f
   S.F.forEach((x, i) => { x.ai = i !== f })
   applyDiff()
+  // on a phone the board is wider than the frame, so the war has to open where
+  // the player's own is: the middle of their holdings, not the middle of the map
+  const mine = S.C.filter(c => c.o === f)
+  if (mine.length) gaze(mine.reduce((t, c) => t + c.x, 0) / mine.length,
+    mine.reduce((t, c) => t + c.y, 0) / mine.length)
   clearOv(); playing = 1; music(1); ui()
 }
 hooks.again = () => { fresh(); title(); playing = 0 }
@@ -51,9 +56,48 @@ function frame (ts) {
   ui()
 }
 
+// Pointers: one that stays put is a click on the map, one that travels drags
+// the board under it, two of them pinch. The order matters — the tap only fires
+// on the way up, once it is known the finger never went anywhere.
+const pt = new Map()
+let drag = 0, gap = 0
+
 cv.addEventListener('pointerdown', e => {
+  pt.set(e.pointerId, { sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY })
+  if (pt.size > 1) gap = 0            // a second finger opens a fresh pinch
+})
+
+addEventListener('pointermove', e => {
+  const p = pt.get(e.pointerId)
+  if (!p) return
+  const ox = p.x, oy = p.y
+  p.x = e.clientX; p.y = e.clientY
+  if (pt.size > 1) {
+    drag = 1
+    const [a, b] = [...pt.values()], d = Math.hypot(a.x - b.x, a.y - b.y)
+    if (gap) zoom(d / gap, (a.x + b.x) / 2, (a.y + b.y) / 2)
+    gap = d
+    return
+  }
+  // a few pixels of slop first, or a mouse click with any tremor in it would
+  // stop being a click. Past that the board slides and the tap is forfeit
+  if (!drag && Math.hypot(p.x - p.sx, p.y - p.sy) < 7) return
+  drag = 1
+  pan(p.x - ox, p.y - oy)
+})
+
+addEventListener('pointerup', e => {
+  const p = pt.get(e.pointerId)
+  pt.delete(e.pointerId)
+  if (pt.size) { gap = 0; return }    // a pinch is not over until every finger is up
+  const moved = drag; drag = 0
+  if (p && !moved) act(p.x, p.y)
+})
+addEventListener('pointercancel', e => { pt.delete(e.pointerId); if (!pt.size) drag = 0 })
+
+function act (cx, cy) {
   if (!playing || S.over) return
-  const p = toWorld(e.clientX, e.clientY)
+  const p = toWorld(cx, cy)
   // hit-test what the player sees, not the logical spot. kinds refuse to merge,
   // so a node can hold three of your hosts closer together than they are wide —
   // clicking again walks to the next one rather than sticking on the first
@@ -75,7 +119,7 @@ cv.addEventListener('pointerdown', e => {
   S.sel = ha ? { k: 'a', i: ha.id } : hc >= 0 ? { k: 'c', i: hc } : null
   if (S.sel) chime()
   ui()
-})
+}
 
 addEventListener('keydown', e => {
   const k = e.key

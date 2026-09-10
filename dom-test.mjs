@@ -51,7 +51,7 @@ globalThis.Audio = class {
   pause () { this.paused = true }
 }
 
-const { S, T } = await import('./src/state.js')
+const { S, T, W, H } = await import('./src/state.js')
 const { active } = await import('./src/sim.js')
 const { cityR, V } = await import('./src/render.js')
 const { SCN } = await import('./src/map.js')
@@ -77,8 +77,15 @@ const click = (a, i) => {
 // world coords -> screen, off the live view rather than a second copy of the
 // projection: this used to restate the scale and offsets and went stale the
 // day they changed
-const tap = (wx, wy) =>
-  els.cv.h.pointerdown({ clientX: wx * V.s + V.ox, clientY: wy * V.s + V.oy })
+// a tap is a press and a release at the same spot — the map only acts on the
+// way up, since a pointer that travels in between is a pan and not a click
+const spot = (wx, wy) => ({ pointerId: 1, clientX: wx * V.s + V.ox, clientY: wy * V.s + V.oy })
+const tap = (wx, wy) => { const e = spot(wx, wy); els.cv.h.pointerdown(e); win.h.pointerup(e) }
+// and a press, a drag and a release is a pan: it moves the camera, lands no click
+const swipe = (wx, wy, dx, dy) => {
+  const e = spot(wx, wy), q = { pointerId: 1, clientX: e.clientX + dx, clientY: e.clientY + dy }
+  els.cv.h.pointerdown(e); win.h.pointermove(q); win.h.pointerup(q)
+}
 
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
@@ -122,11 +129,14 @@ ok(els.hud.innerHTML.includes(S.F[2].nm) && els.hud.innerHTML.includes(S.F[2].em
 // the calendar is S.tick over T.day and nothing else, so it can be read off a
 // tick count set by hand. Ticks are stopped and the count put back afterwards,
 // or every escal- and bold-scaled number below would move with it
+// the age hangs in a span of its own, which a narrow hud hides. The assertion
+// carries it verbatim, so deleting the span fails here rather than going vacuous
+const AGE = '<span class=ag> of the Mazurian Age</span>'
 const tickWas = S.tick, speedWas = S.speed, d0Was = S.d0
 S.speed = 0; S.d0 = 0
 const on = (t, d) => {
   S.tick = t * T.day; step(1)
-  ok(els.hud.innerHTML.includes('<b>' + d + ' of the Mazurian Age</b>'), d)
+  ok(els.hud.innerHTML.includes('<b>' + d + AGE + '</b>'), d)
 }
 on(0, 'Auriel 1st, year 13312')
 on(1, 'Auriel 2nd, year 13312')
@@ -146,7 +156,7 @@ ok(hudH.indexOf('💎') < hudH.indexOf('Mazurian') && hudH.indexOf('Mazurian') <
 // a scenario shifts only what the calendar calls the day. Both dates below are
 // worked out by hand from its offset, not re-derived from the code
 S.d0 = SCN[1][2]; S.tick = 0; step(1)
-ok(els.hud.innerHTML.includes('<b>Lumin 10th, year 13986 of the Mazurian Age</b>'),
+ok(els.hud.innerHTML.includes('<b>Lumin 10th, year 13986' + AGE + '</b>'),
   'a scenario opens the calendar on its own date')
 S.tick = 27 * T.day; step(1)
 ok(els.hud.innerHTML.includes('<b>Hearth 9th, year 13986'), 'and the months run on from there')
@@ -642,6 +652,70 @@ step(4, 100)
 ok(S.over > 0, 'holding every city wins')
 ok(played.includes(FANFARE), 'and the fanfare sounds for it')
 ok(made[CLASH].paused, 'while the din stops even with a clash still drawn')
+
+// --- the camera: a phone fits the height and pans across it ---------------
+// Where the board already fits the frame — every landscape frame, so every
+// desktop — the new rule is the old min() and the pan clamps to nothing, which
+// is what makes this whole change invisible there.
+ok(Math.abs(V.s - Math.min(innerWidth / W, innerHeight / H) * 0.92) < 1e-9,
+  'a landscape frame scales exactly as it always did')
+ok(Math.abs(V.ox - (innerWidth - W * V.s) / 2) < 1e-9 &&
+   Math.abs(V.oy - (innerHeight - H * V.s) / 2) < 1e-9,
+  'and centres the board the same way')
+const oxFit = V.ox
+swipe(W / 2, H / 2, 200, 120)
+ok(V.ox === oxFit, 'so a drag across it moves nothing — there is nowhere to go')
+
+// a phone held upright. Fitting both axes here puts the board at 0.36 and a
+// city name at four pixels; the height is what gets fitted instead
+const wWas = innerWidth, hWas = innerHeight
+globalThis.innerWidth = 390; globalThis.innerHeight = 844
+V.s = 0                                    // a fresh frame, not a resize of the old one
+win.h.resize()
+ok(V.s > Math.min(390 / W, 844 / H) * 2.5,
+  `the narrow frame zooms well past the fit (${V.s.toFixed(2)} against ${(Math.min(390 / W, 844 / H) * 0.92).toFixed(2)})`)
+ok(H * V.s <= 844, 'the board still fits the height')
+ok(W * V.s > 390 * 2, 'and runs off the width, which is what there is to pan')
+
+// a new war on that frame opens over the player's own holdings
+click('n'); click('s', 2); click('b'); step(1)
+S.speed = 0                                // freeze the board: these are clicks, not ticks
+const held = S.C.filter(c => c.o === S.me)
+const cx = held.reduce((t, c) => t + c.x, 0) / held.length
+const cy = held.reduce((t, c) => t + c.y, 0) / held.length
+// what the middle of the frame is looking at
+const mid = () => ({ x: (innerWidth / 2 - V.ox) / V.s, y: (innerHeight / 2 - V.oy) / V.s })
+ok(Math.abs(mid().x - cx) < 1e-9,
+  `the camera opens on the middle of your ${held.length} cities, not the middle of the map`)
+ok(Math.abs(cx - W / 2) > 40, `which is somewhere else entirely (${(cx - W / 2).toFixed(0)} units off)`)
+// the height fits, so there is no vertical slack to spend: it stays dead centre
+// however far north or south your holdings happen to sit
+ok(Math.abs(mid().y - H / 2) < 1e-9 && Math.abs(cy - H / 2) > 1,
+  'while the axis that fits is pinned centre, wherever those cities are')
+
+// panning: the board slides by exactly what the finger moved, and stops at its edge
+const ox0 = V.ox
+swipe(200, 400, -120, 0)
+ok(Math.abs(V.ox - (ox0 - 120)) < 1e-9, 'a drag slides the board by what the finger moved')
+swipe(200, 400, -9999, 0)
+ok(Math.abs(V.ox - (innerWidth - W * V.s)) < 1e-9,
+  'and it cannot be dragged past its own far edge')
+swipe(200, 400, 9999, 0)
+ok(Math.abs(V.ox) < 1e-9, 'nor past the near one')
+
+// and the drag is not a click: the same spot taken slowly does select
+const lone = S.C.findIndex(c => !S.A.some(a => Math.hypot(a.rx - c.x, a.ry - c.y) < 20))
+S.sel = null
+// the drag has to *end* on the city, or a stray click would miss it anyway and
+// the assertion would pass without testing anything. The height fits, so this
+// vertical drag is clamped to no movement and the release lands on the disc
+swipe(S.C[lone].x, S.C[lone].y + 140 / V.s, 0, -140)
+ok(S.sel === null, 'a drag that ends on a city selects nothing — it is a pan')
+tap(S.C[lone].x, S.C[lone].y)
+ok(S.sel && S.sel.k === 'c' && S.sel.i === lone, 'the same city tapped does select')
+
+globalThis.innerWidth = wWas; globalThis.innerHeight = hWas
+V.s = 0; win.h.resize()
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

@@ -517,3 +517,8 @@ Wait for conscription
 Click to select your unit
 Click on an enemy city to move.
 Click anywhere else to unselect unit.
+# Round 25 Sept 10
+- Mobile support. Don't worry too much about code size.
+- Viewport: don't fit horizontally, fit vertically and add panning. Start centered on your cities.
+- Two lines for the status bar on top.
+- Show the city/unit panel at the bottom instead of anchored to the right.

@@ -15,7 +15,9 @@ const ord = d => d + (d % 20 === 1 ? 'st' : d % 20 === 2 ? 'nd' : d % 20 === 3 ?
 // any day since the epoch, spelled out — the hud asks for today, a scenario card
 // asks for the day it opens on
 const at = d => `${MON[d % 364 / 28 | 0]} ${ord(d % 28 + 1)}, year ${13312 + (d / 364 | 0)}`
-const date = () => at(days() + S.d0) + ' of the Mazurian Age'
+// the age rides in its own span so a narrow hud can drop it: the day and the
+// year fit a phone across, the whole style of it does not
+const date = () => at(days() + S.d0) + '<span class=ag> of the Mazurian Age</span>'
 
 const $ = id => document.getElementById(id)
 const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast'), tip = $('tip')
