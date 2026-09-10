@@ -180,7 +180,6 @@ export function genMap (sd) {
   })
 
   S.F = REALMS.map(([nm, c, em], i) => ({ nm, c, em, ai: i !== S.me, g: 60, alive: 1 }))
-  S.stat = { took: 0, lost: 0, slain: 0 }
   applyDiff()
   return S
 }

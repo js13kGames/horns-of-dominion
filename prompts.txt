@@ -522,3 +522,5 @@ Click anywhere else to unselect unit.
 - Viewport: don't fit horizontally, fit vertically and add panning. Start centered on your cities.
 - Two lines for the status bar on top.
 - Show the city/unit panel at the bottom instead of anchored to the right.
+- Remove stats tracking and display: cities taken, cities lost, hosts broken, gameplay time. Leave only in-game days on the game over / victory screen.
+- Shorten the titles: "Your banner falls" -> "Defeat".

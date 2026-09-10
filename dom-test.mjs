@@ -620,12 +620,17 @@ ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') 
 ok(played.includes(FANFARE) === (S.over > 0), 'the fanfare sounds on a win and only on a win')
 ok(made[CLASH].paused, 'and the din stops with the game')
 ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
-ok(/hosts broken/.test(els.ov.innerHTML) && !/largest host/.test(els.ov.innerHTML),
-  'end screen shows the campaign tally, minus the largest host it used to track')
-ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
+// the campaign is scored in days and in nothing else. Counting the numbers on
+// the screen is the assertion a bare "no longer mentions X" cannot make — that
+// shape went vacuous here before, the day the string it keyed on was deleted
+ok(els.ov.innerHTML.split('<b>').length === 2, 'the end screen carries exactly one number')
 ok(/📅 days/.test(els.ov.innerHTML) &&
   els.ov.innerHTML.includes('<b>' + (S.tick / T.day | 0) + '</b><span>📅 days</span>'),
-  `and scores the campaign in days (${S.tick / T.day | 0})`)
+  `and it is the campaign in days (${S.tick / T.day | 0})`)
+ok(!/taken|💔|hosts broken|\d+m \d+s/.test(els.ov.innerHTML),
+  'with no city tally, no broken hosts and no real-time clock')
+ok(/<h1>(👑 Victory|💀 Defeat)<\/h1>/.test(els.ov.innerHTML),
+  'and a one-word verdict for a title')
 const seedWas = S.seed
 click('n')
 ok(S.over === 0 && S.C.length === 20 && els.ov.innerHTML.includes('Horns of Dominion'), 'restart returns to the title')

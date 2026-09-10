@@ -57,8 +57,7 @@ button.on { background:#4a3d7a; border-color:#7a68b8; }
 #ov p { opacity:.65; max-width:440px; }
 #ov h2 { font-size:12px; opacity:.45; }
 .diff { display:flex; gap:6px; }
-.tally { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin:2px 0 6px; }
-.tally div { display:flex; flex-direction:column; align-items:center; }
+.tally { display:flex; flex-direction:column; align-items:center; margin:2px 0 6px; }
 .tally b { font-size:22px; font-weight:700; }
 .tally span { font-size:11px; opacity:.55; }
 .realms { display:flex; gap:9px; flex-wrap:wrap; justify-content:center; }

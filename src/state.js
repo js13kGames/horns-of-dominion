@@ -104,8 +104,7 @@ export const S = {
   F: [],      // factions{g,c,em,nm,ai,alive}
   E: [],      // edges   [i,j]
   fx: [],     // transient effects {x,y,k,l,c}
-  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, scn: 0, d0: 0, tut: 0, elapsed: 0, alpha: 0, toast: '', toastT: 0, split: 1, diff: 2,
-  stat: { took: 0, lost: 0, slain: 0 }
+  me: 0, sel: null, speed: 1, tick: 0, over: 0, seed: 1, scn: 0, d0: 0, tut: 0, elapsed: 0, alpha: 0, toast: '', toastT: 0, split: 1, diff: 2
 }
 
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)

@@ -139,16 +139,14 @@ export function title () {
     `<button data-a=b>⚔️ Start</button>`
 }
 
+// one word, one number: the campaign is scored in the days it took and nothing
+// else. Real time was never the game's own clock, and a tally of cities and
+// broken hosts said what the board had already shown for the whole war
 export function ending () {
-  const win = S.over > 0, t = S.stat
-  ov.innerHTML = `<h1>${win ? '👑 The Rainbow Kingdom is yours' : '💀 Your banner falls'}</h1>` +
-    `<p>${S.F[S.me].em} ${S.F[S.me].nm} · ${D[S.diff].nm} · ${(S.elapsed / 60) | 0}m ${(S.elapsed | 0) % 60}s</p>` +
-    `<div class=tally>` +
-    `<div><b>${t.took}</b><span>🏰 taken</span></div>` +
-    `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
-    `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
-    `<div><b>${days()}</b><span>📅 days</span></div>` +
-    `</div><button data-a=n>🌈 New story</button>`
+  ov.innerHTML = `<h1>${S.over > 0 ? '👑 Victory' : '💀 Defeat'}</h1>` +
+    `<p>${S.F[S.me].em} ${S.F[S.me].nm} · ${D[S.diff].nm}</p>` +
+    `<div class=tally><b>${days()}</b><span>📅 days</span></div>` +
+    `<button data-a=n>🌈 New story</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }
 

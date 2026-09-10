@@ -100,8 +100,6 @@ export const unrest = i => S.C[i].u >= T.calm
 // when it boils over the city simply goes home; no mob, no siege
 function revolt (i) {
   const c = S.C[i], old = c.o
-  if (old === S.me) S.stat.lost++
-  if (c.na === S.me) S.stat.took++
   c.o = c.na
   c.u = 0
   c.mu = 0                                         // the half-raised host scatters
@@ -200,8 +198,6 @@ function melee (g) {
   for (const [a, d] of hit) a.w -= d
 }
 
-const shattered = g => { for (const a of g) if (a.w <= 0.5 && a.o !== S.me) S.stat.slain++ }
-
 // ---- roads: engagements between nodes, then movement ---------------------
 function lanes () {
   const l = {}
@@ -241,7 +237,6 @@ function roads () {
         const ap = cl.map(z => along(z, z.pr))
         const f = (Math.min(...ap) + Math.max(...ap)) / 2 / dist(lo, hi)
         if (seeRoad(li, hj)) boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
-        shattered(cl)
         const losing = odds(cl)                // an outmatched AI host turns and runs
         for (const a of cl) {
           if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
@@ -319,7 +314,6 @@ export function tick () {
       const ids = here.map(z => z.id)
       for (const a of here) { a.eg = ids; a.sg = sides.includes(c.o) ? i : -1 }
       if (seeCity(i)) boom(c.x, c.y, 1)
-      shattered(here)
       const losing = odds(here)                // AI routs to a quiet neighbour
       for (const a of here) {
         if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
@@ -342,9 +336,6 @@ export function tick () {
     for (const a of here) a.w -= loss * (a.w / force)
     c.s -= ram * T.sgDmg * (1 + S.tick / T.escal)     // long wars grind walls faster
     if (c.s <= 0) {
-      const old = c.o
-      if (f === S.me) S.stat.took++
-      if (old === S.me) S.stat.lost++
       c.o = f
       c.p *= T.sack
       c.s = c.m * T.garrison
