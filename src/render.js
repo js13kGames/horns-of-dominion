@@ -30,12 +30,22 @@ export function resize () {
 
 // the offsets are clamped so the board can never be dragged clean out of the
 // frame, and pinned dead centre on any axis it already fits — which is both
-// axes on a desktop frame, so the projection there is what it always was
+// axes on a desktop frame, so the projection there is what it always was.
+//
+// The exception is the bottom of a narrow frame. There the panel sits along
+// that edge, and the board fits the height exactly, so the clamp left *no*
+// vertical travel whatever: a city behind the panel could never be marched to,
+// because it could never be brought out from under it. So the lower bound —
+// and only the lower bound, and only when the chrome is down there — is given
+// half a screen of extra room to be dragged into. Panning past the map is safe
+// to look at: the ground bake runs 500 world units past it on every side.
+const NARROW = 700                 // must match the media query in style.css
 const cl = (v, c, m) => Math.max(c - m, Math.min(c + m, v))
 function look () {
   const w = innerWidth, h = innerHeight
   V.ox = cl(V.ox, (w - W * V.s) / 2, Math.max(0, (W * V.s - w) / 2))
-  V.oy = cl(V.oy, (h - H * V.s) / 2, Math.max(0, (H * V.s - h) / 2))
+  const cy = (h - H * V.s) / 2, my = Math.max(0, (H * V.s - h) / 2)
+  V.oy = Math.max(cy - my - (w <= NARROW ? h / 2 : 0), Math.min(cy + my, V.oy))
 }
 
 export const pan = (dx, dy) => { V.ox += dx; V.oy += dy; look() }

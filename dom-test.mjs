@@ -682,9 +682,14 @@ ok(Math.abs(V.s - Math.min(innerWidth / W, innerHeight / H) * 0.92) < 1e-9,
 ok(Math.abs(V.ox - (innerWidth - W * V.s) / 2) < 1e-9 &&
    Math.abs(V.oy - (innerHeight - H * V.s) / 2) < 1e-9,
   'and centres the board the same way')
-const oxFit = V.ox
+const oxFit = V.ox, oyFit = V.oy
 swipe(W / 2, H / 2, 200, 120)
-ok(V.ox === oxFit, 'so a drag across it moves nothing — there is nowhere to go')
+ok(V.ox === oxFit && V.oy === oyFit,
+  'so a drag across it moves nothing — there is nowhere to go, on either axis')
+// upward too, and separately: the bottom slack a narrow frame gets is only on
+// this bound, so a drag the other way is the only one that can see it leaking
+swipe(W / 2, H / 2, 0, -200)
+ok(V.oy === oyFit, 'not even upward — a wide frame has no panel along its bottom')
 
 // a phone held upright. Fitting both axes here puts the board at 0.36 and a
 // city name at four pixels; the height is what gets fitted instead
@@ -722,6 +727,18 @@ ok(Math.abs(V.ox - (innerWidth - W * V.s)) < 1e-9,
   'and it cannot be dragged past its own far edge')
 swipe(200, 400, 9999, 0)
 ok(Math.abs(V.ox) < 1e-9, 'nor past the near one')
+
+// the bottom of a narrow frame has the panel on it, so the board must be
+// draggable up out from under it. Without the slack this axis has no travel at
+// all — the board fits the height — and a city behind the panel is unreachable
+const oyRest = V.oy
+swipe(200, 400, 0, -300)
+ok(Math.abs(V.oy - (oyRest - 300)) < 1e-9, 'the board lifts out from under the bottom panel')
+swipe(200, 400, 0, -9999)
+ok(Math.abs(V.oy - (oyRest - innerHeight / 2)) < 1e-9,
+  'by half a screen of slack, and no further')
+swipe(200, 400, 0, 9999)
+ok(Math.abs(V.oy - oyRest) < 1e-9, 'and cannot be dragged back down past its resting place')
 
 // and the drag is not a click: the same spot taken slowly does select
 const lone = S.C.findIndex(c => !S.A.some(a => Math.hypot(a.rx - c.x, a.ry - c.y) < 20))

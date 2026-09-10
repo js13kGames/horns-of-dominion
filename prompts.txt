@@ -527,3 +527,4 @@ Click anywhere else to unselect unit.
 - Sometimes it's very hard to capture a city showing 0 walls. (Was the rot floor in step 6b: Math.max(0.5, ...) pinned a crumbling realm's walls at 0.5, which prints as 0 and which a 40-footman muster could never cross.)
 - Move the onboarding popup off the capital city: put it under the top menu bar, centred, in the same place as the toasts.
 - First onboarding tip: "Click below to select your capital city" -> "Select any (color) city", and advance to the next step whichever city was selected.
+- On mobile the unit/city panel obscures cities at the bottom; add a safe area at the bottom so the player can pan them out from under it.
