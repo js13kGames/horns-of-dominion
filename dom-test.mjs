@@ -314,13 +314,13 @@ S.A = []; S.sel = null; S.tut = 0; S.C.forEach(c => { c.mu = 0 })
 const cap = S.C.findIndex(c => c.cap && c.o === S.me)
 step(1)
 ok(/capital/.test(els.tip.innerHTML), 'the first tip asks for your capital')
-// measured as a range rather than re-derived: it has to be above the disc by
-// about a city circle, and this fails both if the lift goes and if it overshoots
+// the anchor is the card's bottom edge (CSS hangs it with translate -100%, which
+// no stub can check), so what is testable is that the anchor clears the top of
+// the disc by a small fixed margin — not by a share of the card's own height
 const capY = S.C[cap].y * V.s + V.oy, capR = cityR(S.C[cap]) * V.s
-const tipY = parseFloat(els.tip.style.top)
+const gap = () => capY - capR - parseFloat(els.tip.style.top)
 ok(els.tip.style.left === S.C[cap].x * V.s + V.ox + 'px', 'and floats over it')
-ok(tipY < capY - capR * 0.6 && tipY > capY - capR * 1.6,
-  `lifted about a city radius clear of the disc (${(capY - tipY).toFixed(0)}px over ${capR.toFixed(0)})`)
+ok(gap() > 4 && gap() < 24, `hanging a fixed margin above the disc (${gap().toFixed(0)}px)`)
 ok(/data-a=z/.test(els.tip.innerHTML), 'with a way out of it')
 S.sel = { k: 'c', i: cap }; step(1)
 ok(/Raise/.test(els.tip.innerHTML), 'selecting the capital asks for a warband')
@@ -399,9 +399,15 @@ const stash = S.A
 S.A = [{ id: 5101, o: 1, w: 20, k: 0, a: 0, t: -1, pr: 0, st: 0, dst: -1, hold: 0 },
   { id: 5102, o: 3, w: 20, k: 0, a: 0, t: 1, pr: 0.5, st: 0, dst: -1, hold: 0 }]
 step(1, 0)                             // a fresh host is placed outright, no easing
-const c0 = S.C[0], ra = 1 * 1.2566 - 1.9, rr = cityR(c0) + 17
+const c0 = S.C[0], ra = (1 - S.me) * 1.2566 + 1.5708, rr = cityR(c0) + 17
 ok(Math.hypot(S.A[0].rx - (c0.x + Math.cos(ra) * rr), S.A[0].ry - (c0.y + Math.sin(ra) * rr)) < 4,
   'a lone host keeps its own slot whatever marches the road of the same name')
+// and the slot that matters is counted from your own realm, so this holds for all
+// five colours: your host rests under the city, where the tip card is not
+S.A = [{ id: 5103, o: S.me, w: 20, k: 0, a: 0, t: -1, pr: 0, st: 0, dst: -1, hold: 0 }]
+step(1, 0)
+ok(S.A[0].ry > c0.y + cityR(c0) && Math.abs(S.A[0].rx - c0.x) < 4,
+  'your own host rests directly below the city, whichever realm you took')
 S.A = stash
 
 tap(h.rx, h.ry)

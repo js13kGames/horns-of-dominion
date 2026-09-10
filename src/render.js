@@ -38,8 +38,11 @@ function spot (a, sp) {
   // fan by owner around the city, then across that slot by whoever else of
   // theirs is resting here — three kinds that will not merge, or the halves of
   // a split. sideways, not outward: the strength number hangs 18px under its
-  // own disc, so stacking along the spoke drops each label onto the disc behind
-  const r = cityR(c) + 17, ang = a.o * 1.2566 - 1.9 + sp * 26 / r
+  // own disc, so stacking along the spoke drops each label onto the disc behind.
+  // The slots are counted from *your* realm, not from realm 0, so your own hosts
+  // always rest under the city whichever colour you picked — which is what keeps
+  // the onboarding card, floating above, off the host it is pointing at
+  const r = cityR(c) + 17, ang = (a.o - S.me) * 1.2566 + 1.5708 + sp * 26 / r
   return { x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }
 }
 

@@ -23,10 +23,10 @@ export const hooks = {}
 const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h } }
 const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' disabled'}>${txt}</button>`
 
-// Onboarding: six tips floating over your capital. Which one shows is read off
+// Onboarding: seven tips floating over your capital. Which one shows is read off
 // the board, like the fog and the command — S.tut only remembers how far you got,
 // so the sequence cannot run backwards and knows when the last act is done.
-const TIP = ['Click here to select your capital city', 'Click Raise to create an army',
+const TIP = ['Click below to select your capital city', 'Click the "Raise" button to create an army',
   'Wait for conscription', 'Click to select your unit', 'Click an enemy city to move',
   'Click anywhere else to unselect', 'Conquer all the cities in the map to win']
 function tut () {
@@ -40,11 +40,11 @@ function tut () {
   if (d > S.tut) S.tut = d                 // the furthest point reached, for the ending
   if (S.tut > 4 && !a) S.tut = 6              // the host stood down: on to the last word
   set(tip, `${TIP[S.tut > 5 ? 6 : d]}<a data-a=z>dismiss</a>`)
-  // lifted a city radius clear of the disc, so the card sits off the ring and the
-  // badges without floating away from what it is pointing at — and it scales with
-  // the city, like everything else here
+  // the card hangs by its bottom edge (translate -100%) a fixed margin above the
+  // city. Lifting it by a share of its own height instead — which is what -165%
+  // did — floated a two-line tip higher than a one-line one
   tip.style.left = S.C[i].x * V.s + V.ox + 'px'
-  tip.style.top = (S.C[i].y - cityR(S.C[i])) * V.s + V.oy + 'px'
+  tip.style.top = (S.C[i].y - cityR(S.C[i])) * V.s + V.oy - 12 + 'px'
 }
 
 export function ui () {

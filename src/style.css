@@ -29,7 +29,7 @@ button.on { background:#4a3d7a; border-color:#7a68b8; }
 #pan:empty, #toast:empty, #tip:empty { display:none; }
 #tip {
   width:168px; padding:7px 10px; text-align:center; pointer-events:none;
-  border-color:#7a68b8; transform:translate(-50%,-165%);
+  border-color:#7a68b8; transform:translate(-50%,-100%);
 }
 #tip a { display:block; font-size:11px; opacity:.55; text-decoration:underline;
   cursor:pointer; pointer-events:auto; }
