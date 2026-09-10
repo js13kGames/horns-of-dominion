@@ -143,10 +143,10 @@ export function title () {
 // else. Real time was never the game's own clock, and a tally of cities and
 // broken hosts said what the board had already shown for the whole war
 export function ending () {
-  ov.innerHTML = `<h1>${S.over > 0 ? '👑 Victory' : '💀 Defeat'}</h1>` +
+  ov.innerHTML = `<h1>${S.over > 0 ? 'Victory' : 'Defeat'}</h1>` +
     `<p>${S.F[S.me].em} ${S.F[S.me].nm} · ${D[S.diff].nm}</p>` +
-    `<div class=tally><b>${days()}</b><span>📅 days</span></div>` +
-    `<button data-a=n>🌈 New story</button>`
+    `<div class=tally><b>${days()}</b><span>days</span></div>` +
+    `<button data-a=n>Back</button>`
 }
 export const clearOv = () => { ov.innerHTML = '' }
 

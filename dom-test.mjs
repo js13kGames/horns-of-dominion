@@ -619,17 +619,19 @@ for (let i = 0; i < 2200 && !S.over; i++) step(20, 100)
 ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') + ')')
 ok(played.includes(FANFARE) === (S.over > 0), 'the fanfare sounds on a win and only on a win')
 ok(made[CLASH].paused, 'and the din stops with the game')
-ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
+// keyed on the button's action, not its label: `n` is what the click handler
+// dispatches on, so re-wording the copy cannot quietly empty this out
+ok(/data-a=n/.test(els.ov.innerHTML), 'end screen renders, with the way back on it')
 // the campaign is scored in days and in nothing else. Counting the numbers on
 // the screen is the assertion a bare "no longer mentions X" cannot make — that
 // shape went vacuous here before, the day the string it keyed on was deleted
 ok(els.ov.innerHTML.split('<b>').length === 2, 'the end screen carries exactly one number')
-ok(/📅 days/.test(els.ov.innerHTML) &&
-  els.ov.innerHTML.includes('<b>' + (S.tick / T.day | 0) + '</b><span>📅 days</span>'),
+ok(/days/.test(els.ov.innerHTML) &&
+  els.ov.innerHTML.includes('<b>' + (S.tick / T.day | 0) + '</b><span>days</span>'),
   `and it is the campaign in days (${S.tick / T.day | 0})`)
 ok(!/taken|💔|hosts broken|\d+m \d+s/.test(els.ov.innerHTML),
   'with no city tally, no broken hosts and no real-time clock')
-ok(/<h1>(👑 Victory|💀 Defeat)<\/h1>/.test(els.ov.innerHTML),
+ok(/<h1>(Victory|Defeat)<\/h1>/.test(els.ov.innerHTML),
   'and a one-word verdict for a title')
 const seedWas = S.seed
 click('n')

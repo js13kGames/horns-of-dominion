@@ -222,6 +222,30 @@ It is gated by the same `o` that gates speed, so **a road fight is untouched**: 
 
 **What was left alone on purpose.** `force()` and `friend()` in `ai.js` still weigh hosts with bare `pw`, so the AI slightly under-rates a defender standing on its own city when it picks a target. Teaching them `T.home` is a one-word change to the highest-risk file in the repo, and the ladder above did not ask for it. If a defended city starts looking too attractive to the AI, that is the knob — with a full balance re-run.
 
+### A crumbling realm's walls, and why the floor is zero
+
+`T.rot` in step 6b sheds wall points from every city of a realm down to `T.dying` or fewer. It used to floor at **0.5**, and that floor was a bug with a very specific shape: **capture is `c.s <= 0` in the siege step**, so a floor above zero is a floor under the whole endgame.
+
+The floor **reset the wall every tick**, which meant a besieger had to cross the whole of it in a single tick or never cross it at all. A standard muster — `T.raiseW` 40 footmen — rams `40 * T.sgDmg` = **0.33** wall points a tick, under 0.5. So the wall sat at exactly 0.5 for ever while the host bled out against it at `T.sgLoss * c.d` a tick. Traced on seed 7 against a Defense-10 city: walls 42 → 0.5 by tick 200, host 40 → 0 warriors by tick 500, city never taken in 3,000 ticks.
+
+**And the player could see none of it**, which is what made it a bug report rather than a balance note: the panel prints `c.s | 0` and the wall ring draws `max(0, c.s) / c.m`, so a city pinned at 0.5 reads **"Walls 0"**. The symptom is a zero-walled city that eats army after army, and it fires at the worst possible moment — mopping up the last realm, which is the only time 6b runs at all.
+
+The threshold was `ram > 60` early on, easing to ~43 by tick 20,000 as `T.escal` bites. So: 40 footmen never, 40 unicorns never (ram 20), 40 behemoths fine (ram 100), 80 footmen fine. Worse, a 61-footman host **bled below the line mid-siege** and then stalled for ever, so the trap was not even monotonic in what you sent.
+
+**Measured across five independent seed ranges, 400 games each at rung 2** (`diff-test` at 200 a rung either side). Three ranges were run first and looked alarming — seed 1000 grew a 27,967-tick game and seed 9000 a stalemate — so two more were run before drawing any conclusion, which is the procedure this file keeps insisting on:
+
+| seed | p50 | p90 | p99 | max | stalemate |
+|---|---|---|---|---|---|
+| 1000 | 3922→3849 | 6383→6702 | 11936→**10703** | 17887→27967 | 0→0 |
+| 5000 | 3982→3885 | 6086→6278 | 9618→10641 | 11292→11713 | 0→0 |
+| 9000 | 3941→**3750** | 6568→**6162** | 13596→**11469** | 16020→20905 | 0→1 |
+| 3000 | 3834→3941 | 6588→6437 | 10768→**9286** | 15260→16013 | 0→0 |
+| 13000 | 3896→4015 | 6193→6520 | 10510→**9332** | 15232→**10398** | 1→1 |
+
+Read it as: **p99 comes in on four ranges of five**, p50 moves by less than the spread between ranges, and the stalemate and 24k counts (1→2 games in 2,000) are inside the noise the *unfixed* code already produces — seed 13000 had a stalemate before the change. `diff-test` improved: 0.5 / 23.0 / 65.0 / 76.0 → 0 / **19.5** / 65.0 / 76.5, the fair Duelist rung landing back on 20%.
+
+`cmd-test` section 14 pins three things — a crumbling realm's walls reach **exactly 0**, one standard muster carries such a city (tick 142 on seed 7), and a *healthy* realm holds the same city longer (tick 201), so the rot is still a real weakening and not merely the removal of a floor. Three mutations were tried: the 0.5 floor restored, a floor of just **0.01**, and the rot deleted. All three fail it.
+
 ### Road contact, and the flee toll
 
 Two bugs lived here together and fed each other. Both have regression tests in `road-test.mjs`, mutation-checked.
