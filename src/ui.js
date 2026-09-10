@@ -29,7 +29,7 @@ const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' dis
 // sequence cannot run backwards and knows when the last act is done.
 // `$` in a tip is the player's own realm marker, which is how the rest of the
 // game says "yours" — the hud wears the same glyph beside the realm name.
-const TIP = ['Select any $ city', 'Select the "Raise" button',
+export const TIP = ['Select any $ city', 'Select the "Raise" button',
   'Assembling Unit...', 'Select your new unit', 'Select another city to march',
   'Tap anywhere else to unselect', 'Conquer all cities to win!']
 function tut () {
