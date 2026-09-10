@@ -24,10 +24,7 @@ export const T = {
   inc: 0.05 * P,    // gold per econ point per tick
   grow: 0.004 * P,  // pop regrowth rate toward cap
   raiseW: 40,       // warriors produced — every kind musters the same bodies
-  repair: 2,        // gold per point of wall repaired
-  repairStep: 10,   // points per repair order
   muster: 6 / P,    // ticks to raise a warband — about one road crossing
-  fixRate: 10 / 3 * P, // wall points rebuilt per tick once paid for
   speed: 26 * P,    // world units an army covers per tick
   reach: 18,        // contact range: armies this close on a road engage
   atk: 0.06 * P,    // field-battle attrition coefficient
@@ -36,7 +33,7 @@ export const T = {
   garrison: 0.35,   // wall fraction restored to the captor
   sack: 0.45,       // pop multiplier on capture — a sacking hurts
   occupy: 18 / P,   // ticks a taken city is too cowed to conscript
-  mend: 0.15 * P,   // passive wall regen per tick
+  mend: 0.15 * P,   // wall points a city puts back per tick, unbidden and unpaid
   flee: 0.25,       // share of a host lost when it breaks contact
   odds: 0.7,        // a host disengages below this share of the enemy's strength
   aiHoard: 1.5,     // AI raises once gold > a footman's price * aiHoard

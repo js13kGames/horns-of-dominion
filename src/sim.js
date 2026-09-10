@@ -104,7 +104,7 @@ function revolt (i) {
   if (c.na === S.me) S.stat.took++
   c.o = c.na
   c.u = 0
-  c.mu = c.rp = 0                                  // the half-raised host scatters
+  c.mu = 0                                         // the half-raised host scatters
   if (old === S.me || c.na === S.me) note('✊ ' + c.nm + ' throws out ' + S.F[old].em)
   if (seeCity(i)) boom(c.x, c.y, 2, S.F[c.na].c)
 }
@@ -133,18 +133,6 @@ function mustered (i) {
   const ex = at(i).find(a => a.o === c.o && a.k === c.mk && !a.hold)
   if (ex) ex.w += T.raiseW
   else S.A.push({ id: nextId++, o: c.o, w: T.raiseW, k: c.mk, a: i, t: -1, pr: 0, st: 0, dst: -1 })
-}
-
-export const canFix = (i, f) => {
-  const c = S.C[i]
-  return c.o === f && c.s + c.rp < c.m && S.F[f].g >= T.repair * T.repairStep
-}
-// masons are paid now; the stone goes up at T.fixRate a tick
-export function fix (i, f) {
-  if (!canFix(i, f)) return 0
-  S.F[f].g -= T.repair * T.repairStep
-  S.C[i].rp += T.repairStep
-  return 1
 }
 
 const turn = a => { const b = a.a; a.a = a.t; a.t = b; a.pr = 1 - a.pr; a.st = 0 }
@@ -366,7 +354,7 @@ export function tick () {
       c.o = f
       c.p *= T.sack
       c.s = c.m * T.garrison
-      c.mu = c.rp = 0                            // the half-raised host scatters
+      c.mu = 0                                   // the half-raised host scatters
       c.oc = T.occupy                            // a cowed city conscripts nobody
       if (f !== c.na) c.u = Math.max(c.u, T.seize)   // an occupied city seethes
       if (seeCity(i)) boom(c.x, c.y, 2, S.F[f].c)
@@ -404,17 +392,13 @@ export function tick () {
     if (rally && c.u > T.riot && rnd() < T.rise) revolt(i)
   }
 
-  // 6. paid repairs and passive mending, both halted while enemies are at the gates
+  // 6. mending, halted while enemies are at the gates. There is no repair order
+  // any more: a city puts its own stone back, and nobody is billed for it
   for (let i = 0; i < NC; i++) {
     const c = S.C[i]
     if (c.s >= c.m || at(i).some(a => a.o !== c.o)) continue
     // masonry loses the race as the war drags on: a long siege eventually tells
-    const up = 1 / (1 + S.tick / T.escal)
-    if (c.rp) {
-      const d = Math.min(c.rp, T.fixRate * up)
-      c.s = Math.min(c.m, c.s + d); c.rp -= d
-    }
-    c.s = Math.min(c.m, c.s + T.mend * up)
+    c.s = Math.min(c.m, c.s + T.mend / (1 + S.tick / T.escal))
   }
 
   // 6b. a realm down to its last holdings cannot keep its walls standing

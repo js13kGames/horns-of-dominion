@@ -1,7 +1,7 @@
 import { S, T, D } from './state.js'
 import { REALMS, SCN } from './map.js'
 import { mute, muted, chime } from './audio.js'
-import { raise, fix, split, canRaise, canFix, canSplit, getArmy, seeCity, tired } from './sim.js'
+import { raise, split, canRaise, canSplit, getArmy, seeCity, tired } from './sim.js'
 
 // the calendar. 13 months of 28 days, so a year is 364 and the whole date is one
 // number — S.tick over T.day. Nothing stored, nothing to reset between games.
@@ -54,10 +54,7 @@ export function ui () {
               ? `⏳ Mustering ${(100 - c.mu / T.muster * 100) | 0}%`
                 : `${T.K[0][5]} Raise ${T.raiseW} — 💎${T.K[0][3]} 👥${T.K[0][4]}`)}` +
           `${c.sp ? btn('g', s.i, canRaise(s.i, S.me, c.sp),
-            `${T.K[c.sp][5]} Raise ${T.raiseW} — 💎${T.K[c.sp][3]} 👥${T.K[c.sp][4]}`) : ''}` +
-          `${btn('f', s.i, canFix(s.i, S.me), c.rp
-            ? `🧱 Rebuilding — ${Math.ceil(c.rp)} to go`
-            : `🧱 Mend +${T.repairStep} — 💎${T.repair * T.repairStep}`)}</div>`
+            `${T.K[c.sp][5]} Raise ${T.raiseW} — 💎${T.K[c.sp][3]} 👥${T.K[c.sp][4]}`) : ''}</div>`
         : ''))
     return
   }
@@ -143,11 +140,10 @@ addEventListener('click', e => {
   const a = el.dataset.a, i = +el.dataset.i
   // every button that commits to something. not the realm card: the song comes
   // up over it and the chime is inaudible under it
-  if ('rgxfdvsc'.includes(a)) chime()
+  if ('rgxdvsc'.includes(a)) chime()
   if (a === 'r') raise(i, S.me)
   else if (a === 'g') raise(i, S.me, S.C[i].sp)
   else if (a === 'x') split(getArmy(S.sel && S.sel.i), S.split)
-  else if (a === 'f') fix(i, S.me)
   else if (a === 'q') mute()
   else if (a === 'v') S.speed = i
   else if (a === 'd') { S.diff = i; title() }

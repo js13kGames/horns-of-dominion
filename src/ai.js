@@ -1,5 +1,5 @@
 import { S, T, dist } from './state.js'
-import { raise, fix, order, canRaise, canFix, pw, garrison, rate, tired } from './sim.js'
+import { raise, order, canRaise, pw, garrison, rate, tired } from './sim.js'
 
 // an enemy host walking the road between i and j — a flyer's whole reason to exist
 const column = (i, j, f) => S.A.some(b => b.o !== f && b.t >= 0 &&
@@ -105,10 +105,4 @@ function step (f, F) {
     }
     if (best >= 0) { order(a, best); return }
   }
-
-  // nothing to do with the spare gold: shore up the weakest frontier wall
-  const weak = mine
-    .filter(i => S.C[i].s < S.C[i].m * 0.7 && S.C[i].n.some(j => S.C[j].o !== f))
-    .sort((x, y) => S.C[x].s / S.C[x].m - S.C[y].s / S.C[y].m)[0]
-  if (weak !== undefined && F.g > T.K[0][3] * 2 && canFix(weak, f)) fix(weak, f)
 }

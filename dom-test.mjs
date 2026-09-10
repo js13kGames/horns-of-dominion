@@ -293,15 +293,19 @@ if (army.t >= 0) {
   ok(1, 'warband arrived before the drawn-spot check could run')
 }
 
-// repair
+// mending: no order, no gold, no button. A knocked-about city puts its own
+// stone back, which is the whole of what the Mend command used to buy
 const w0 = S.C[mine].s = 5
-S.F[2].g = 999
-click('f', mine)
-ok(S.C[mine].s === w0 && S.C[mine].rp > 0, 'repair banks the work rather than finishing it')
+S.F[2].g = 0
 S.speed = 8
-for (let k = 0; k < 200 && S.C[mine].rp; k++) step(1)
+for (let k = 0; k < 200; k++) step(1)
 S.speed = 1
-ok(S.C[mine].s > w0, 'walls rise as the masons work (' + w0 + ' -> ' + (S.C[mine].s | 0) + ')')
+ok(S.C[mine].s > w0, 'walls rise unbidden (' + w0 + ' -> ' + (S.C[mine].s | 0) + ')')
+ok(S.C[mine].s <= S.C[mine].m, 'and stop at the wall they are rebuilding')
+S.sel = { k: 'c', i: mine }; step(1)
+ok(!/data-a=f|Mend|Rebuilding/.test(els.pan.innerHTML),
+  'and the city panel carries no Mend order any more')
+S.sel = null
 
 // speed buttons and keys
 played.length = 0
