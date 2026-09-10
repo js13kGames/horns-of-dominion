@@ -488,6 +488,32 @@ should not dissolve.
 +113 B zipped (13,071 -> 13,184). 128 B of headroom left, which is the
 tightest this has been.
 
-# Pending topics
-1. Something should push you to complete quicker, first of a Year counter challenging you to win quick, but maybe also some menace
-2. Add harmony score (warring too much tires your population)
+# Round 20, Sept 6
+- Change dragons to behemoths
+- Don't play the looping sword sound effect while the game is paused
+- Remove the population and defense indicators from the node in the map and add them to the city panel.
+- Shown an indicator for cities that can raise army
+- When splitting an army, relocate the new warbands around the city
+- Paths to walk to a city are not very visible, offset them vertically
+
+# Round 21, Sept 8
+- Units fighting on a "owned" city (same faction) should have a 20% bonus to attack
+- No min popu required per city; shown pop is available for conscription
+- Unrest should rise twice as quick.
+
+# Round 22 Sept 9
+- Consider the addition of "stamina" for the units, low stamina units move at 50% speed, stamina is spent when moving between nodes but, at a much higher cost, during battle.
+- Bring back the selected unit panel showing details about the selected unit (health, fatigue, blurb: "Siege Damage + 2", "Ambush Bonus * 3")
+- Add a fantasy calendar, shown in the title bar, to get an idea of the passage of time, and provide a score in number of in-game days. 
+- Add 3 scenarios you can select them on the title screen, all they do is provide a seed, and change the starting date but you can also select random mode (random seed).
+I. Rise of the Golden Horn (Hearth 23, year 13312)
+II. The Broken Accord (Lumin 10, year 13986)
+III. The Radiant Spire (Verdant 13, year 14001)
+- Remove Mend as a command. I never use it. We could make it auto, and leave that room for the onboarding
+- Onboarding is a sequence of tips appearing in a floating popup rendered on top of your capital city. The popup has a "dismiss" link which exits the onboarding.
+click here to select your capital city
+Click the "Raise" button to create an army.
+Wait for conscription
+Click to select your unit
+Click on an enemy city to move.
+Click anywhere else to unselect unit.

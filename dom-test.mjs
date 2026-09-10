@@ -307,6 +307,53 @@ ok(!/data-a=f|Mend|Rebuilding/.test(els.pan.innerHTML),
   'and the city panel carries no Mend order any more')
 S.sel = null
 
+// --- onboarding: six tips over your capital, and a way out of them ---------
+// the step is read off the board, so the sequence can be driven by playing it
+const armiesWere = S.A
+S.A = []; S.sel = null; S.tut = 0; S.C.forEach(c => { c.mu = 0 })
+const cap = S.C.findIndex(c => c.cap && c.o === S.me)
+step(1)
+ok(/capital/.test(els.tip.innerHTML), 'the first tip asks for your capital')
+// measured as a range rather than re-derived: it has to be above the disc by
+// about a city circle, and this fails both if the lift goes and if it overshoots
+const capY = S.C[cap].y * V.s + V.oy, capR = cityR(S.C[cap]) * V.s
+const tipY = parseFloat(els.tip.style.top)
+ok(els.tip.style.left === S.C[cap].x * V.s + V.ox + 'px', 'and floats over it')
+ok(tipY < capY - capR * 0.6 && tipY > capY - capR * 1.6,
+  `lifted about a city radius clear of the disc (${(capY - tipY).toFixed(0)}px over ${capR.toFixed(0)})`)
+ok(/data-a=z/.test(els.tip.innerHTML), 'with a way out of it')
+S.sel = { k: 'c', i: cap }; step(1)
+ok(/Raise/.test(els.tip.innerHTML), 'selecting the capital asks for a warband')
+S.F[2].g = 999
+click('r', cap); step(1)
+ok(/conscription/.test(els.tip.innerHTML), 'and mustering asks you to wait')
+S.C[cap].mu = 1                          // one tick from done: the muster itself is
+S.speed = 8                              // tested above, and running 100 ticks here
+for (let k = 0; k < 12 && !S.A.length; k++) step(1)   // would move the whole war on
+S.speed = 1
+S.sel = null; step(1)
+ok(S.A.length === 1 && /select your unit/.test(els.tip.innerHTML),
+  'the warband arrives and the tip points at it')
+S.sel = { k: 'a', i: S.A[0].id }; step(1)
+ok(/enemy city/.test(els.tip.innerHTML), 'taking command asks for a destination')
+tap(S.C[S.C[cap].n[0]].x, S.C[S.C[cap].n[0]].y); step(1)
+ok(S.A[0].t >= 0 && /unselect/.test(els.tip.innerHTML), 'and marching asks you to stand it down')
+S.sel = null; step(1)
+ok(/Conquer/.test(els.tip.innerHTML), 'and standing it down earns the last word')
+S.sel = { k: 'a', i: S.A[0].id }; step(1)
+ok(/Conquer/.test(els.tip.innerHTML), 'which stays put, since no move of yours can end it')
+click('z'); step(1)
+ok(els.tip.innerHTML === '', 'only dismiss ends the onboarding')
+S.sel = null; step(1)
+ok(els.tip.innerHTML === '', 'and it stays ended')
+
+// the dismiss link is the other way out, from wherever you are
+S.tut = 0; S.sel = null; S.A = []; step(1)
+ok(/capital/.test(els.tip.innerHTML), 'the tips can run again from the start')
+click('z'); step(1)
+ok(els.tip.innerHTML === '', 'and dismiss closes them for good')
+S.A = armiesWere; S.sel = null
+
 // speed buttons and keys
 played.length = 0
 click('v', 4); ok(S.speed === 4, 'speed button sets 4x')
@@ -557,7 +604,8 @@ ok(S.over !== 0, 'the game reaches an ending (' + (S.over > 0 ? 'win' : 'loss') 
 ok(played.includes(FANFARE) === (S.over > 0), 'the fanfare sounds on a win and only on a win')
 ok(made[CLASH].paused, 'and the din stops with the game')
 ok(/New story/.test(els.ov.innerHTML), 'end screen renders')
-ok(/largest host/.test(els.ov.innerHTML), 'end screen shows the campaign tally')
+ok(/hosts broken/.test(els.ov.innerHTML) && !/largest host/.test(els.ov.innerHTML),
+  'end screen shows the campaign tally, minus the largest host it used to track')
 ok(!/cities held/.test(els.ov.innerHTML), 'and no longer counts cities held')
 ok(/📅 days/.test(els.ov.innerHTML) &&
   els.ov.innerHTML.includes('<b>' + (S.tick / T.day | 0) + '</b><span>📅 days</span>'),

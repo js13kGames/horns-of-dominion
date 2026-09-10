@@ -1,7 +1,8 @@
 import { S, T, D } from './state.js'
 import { REALMS, SCN } from './map.js'
 import { mute, muted, chime } from './audio.js'
-import { raise, split, canRaise, canSplit, getArmy, seeCity, tired } from './sim.js'
+import { V, cityR } from './render.js'
+import { raise, split, canRaise, canSplit, getArmy, seeCity, tired, active } from './sim.js'
 
 // the calendar. 13 months of 28 days, so a year is 364 and the whole date is one
 // number — S.tick over T.day. Nothing stored, nothing to reset between games.
@@ -17,20 +18,45 @@ const at = d => `${MON[d % 364 / 28 | 0]} ${ord(d % 28 + 1)}, year ${13312 + (d 
 const date = () => at(days() + S.d0) + ' of the Mazurian Age'
 
 const $ = id => document.getElementById(id)
-const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast')
+const hud = $('hud'), pan = $('pan'), ov = $('ov'), ts = $('toast'), tip = $('tip')
 export const hooks = {}
 const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h } }
 const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' disabled'}>${txt}</button>`
 
+// Onboarding: six tips floating over your capital. Which one shows is read off
+// the board, like the fog and the command — S.tut only remembers how far you got,
+// so the sequence cannot run backwards and knows when the last act is done.
+const TIP = ['Click here to select your capital city', 'Click Raise to create an army',
+  'Wait for conscription', 'Click to select your unit', 'Click an enemy city to move',
+  'Click anywhere else to unselect', 'Conquer all the cities in the map to win']
+function tut () {
+  const i = S.C.findIndex(c => c.cap && c.o === S.me)
+  if (S.over || ov.innerHTML || S.tut > 6 || i < 0) return set(tip, '')
+  const a = active()
+  const d = a ? (a.t < 0 ? 4 : 5)
+    : S.A.some(x => x.o === S.me) ? 3
+    : S.C[i].mu ? 2
+    : S.sel && S.sel.k === 'c' && S.sel.i === i ? 1 : 0
+  if (d > S.tut) S.tut = d                 // the furthest point reached, for the ending
+  if (S.tut > 4 && !a) S.tut = 6              // the host stood down: on to the last word
+  set(tip, `${TIP[S.tut > 5 ? 6 : d]}<a data-a=z>dismiss</a>`)
+  // lifted a city radius clear of the disc, so the card sits off the ring and the
+  // badges without floating away from what it is pointing at — and it scales with
+  // the city, like everything else here
+  tip.style.left = S.C[i].x * V.s + V.ox + 'px'
+  tip.style.top = (S.C[i].y - cityR(S.C[i])) * V.s + V.oy + 'px'
+}
+
 export function ui () {
+  tut()
   if (S.over || !S.F.length) return
   const F = S.F[S.me]
   set(hud, `<span style=color:${F.c}>${F.em} <b>${F.nm}</b></span>` +
     `<span>💎 <b>${F.g | 0}</b></span>` +
     `<span class=dt><b>${date()}</b></span>` +   // .dt takes the slack: the date rides right, by the buttons
     `<div class=sp><button data-a=q>${muted ? '🔇' : '🔊'}</button>` +
-    `${[[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']]
-      .map(([v, t]) => `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${t}</button>`).join('')}</div>`)
+    `${[0, 1, 2, 4, 8].map(v =>
+      `<button data-a=v data-i=${v} class="${S.speed === v ? 'on' : ''}">${v ? v + '×' : '⏸'}</button>`).join('')}</div>`)
 
   set(ts, S.toast ? `<div>${S.toast}</div>` : '')
 
@@ -99,18 +125,16 @@ const mult = (k, v) => v === 1 ? '' : row(k, '×' + v)
 
 export function title () {
   ov.innerHTML = `<h1>Horns of Dominion</h1>` +
-    `<p>Raise warbands and conquer the Rainbow Kingdom.</p>` +
-    `<h2>Scenario</h2>` +
+    `<h2>SCENARIO</h2>` +
     `<div class=realms>${SCN.map(([nm, sd, d0], i) =>
       `<div class="realm${S.scn === i ? ' on' : ''}" data-a=c data-i=${i}>` +
       `<div class=e>${'I'.repeat(i + 1)}</div><div class=n>${nm}</div><div class=c>${at(d0)}</div></div>`).join('')}</div>` +
-    `<h2>Kingdom</h2>` +
+    `<h2>KINGDOM</h2>` +
     `<div class=realms>${REALMS.map(([nm, c, em], i) =>
       `<div class="realm${S.me === i ? ' on' : ''}" data-a=s data-i=${i} style=color:${c}><div class=e>${em}</div><div class=n>${nm}</div></div>`).join('')}</div>` +
     `<div class=diff>${D.map((d, i) =>
       `<button data-a=d data-i=${i} class="${S.diff === i ? 'on' : ''}">${d.nm}</button>`).join('')}</div>` +
-    `<button data-a=b>⚔️ Start</button>` +
-    `<p style=opacity:.4>space pauses · 1 2 3 set speed</p>`
+    `<button data-a=b>⚔️ Start</button>`
 }
 
 export function ending () {
@@ -121,7 +145,6 @@ export function ending () {
     `<div><b>${t.took}</b><span>🏰 taken</span></div>` +
     `<div><b>${t.lost}</b><span>💔 lost</span></div>` +
     `<div><b>${t.slain}</b><span>⚔️ hosts broken</span></div>` +
-    `<div><b>${t.most | 0}</b><span>${T.K[0][5]} largest host</span></div>` +
     `<div><b>${days()}</b><span>📅 days</span></div>` +
     `</div><button data-a=n>🌈 New story</button>`
 }
@@ -149,6 +172,7 @@ addEventListener('click', e => {
   else if (a === 'd') { S.diff = i; title() }
   else if (a === 'c') { S.scn = i; hooks.again() }   // a new age: rebuild the board under the title
   else if (a === 'b') hooks.start(S.me)             // the kingdom is chosen; this commits
+  else if (a === 'z') S.tut = 7                     // done with the tips
   else if (a === 's') { S.me = i; title() }
   else if (a === 'n') hooks.again()
   ui()

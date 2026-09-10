@@ -80,10 +80,7 @@ cv.addEventListener('pointerdown', e => {
 addEventListener('keydown', e => {
   const k = e.key
   if (k === ' ') { e.preventDefault(); S.speed = S.speed ? 0 : 1 }
-  else if (k === '1') S.speed = 1
-  else if (k === '2') S.speed = 2
-  else if (k === '3') S.speed = 4
-  else if (k === '4') S.speed = 8
+  else if (k > '0' && k < '5') S.speed = [1, 2, 4, 8][k - 1]
   else if (k === 'm') mute()
   else if (k === 'Escape') S.sel = null
   ui()

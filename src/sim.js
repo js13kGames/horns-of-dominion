@@ -200,12 +200,7 @@ function melee (g) {
   for (const [a, d] of hit) a.w -= d
 }
 
-const shattered = (g, vis) => {
-  for (const a of g) {
-    if (a.w > 0.5) continue
-    if (a.o !== S.me) S.stat.slain++
-  }
-}
+const shattered = g => { for (const a of g) if (a.w <= 0.5 && a.o !== S.me) S.stat.slain++ }
 
 // ---- roads: engagements between nodes, then movement ---------------------
 function lanes () {
@@ -242,11 +237,11 @@ function roads () {
         const ids = cl.map(z => z.id)
         for (const a of cl) { a.st = 1; a.eg = ids }
         const li = Math.min(cl[0].a, cl[0].t), hj = Math.max(cl[0].a, cl[0].t)
-        const lo = S.C[li], hi = S.C[hj], vis = seeRoad(li, hj)
+        const lo = S.C[li], hi = S.C[hj]
         const ap = cl.map(z => along(z, z.pr))
         const f = (Math.min(...ap) + Math.max(...ap)) / 2 / dist(lo, hi)
-        if (vis) boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
-        shattered(cl, vis)
+        if (seeRoad(li, hj)) boom(lo.x + (hi.x - lo.x) * f, lo.y + (hi.y - lo.y) * f, 1)
+        shattered(cl)
         const losing = odds(cl)                // an outmatched AI host turns and runs
         for (const a of cl) {
           if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
@@ -323,9 +318,8 @@ export function tick () {
       melee(here)
       const ids = here.map(z => z.id)
       for (const a of here) { a.eg = ids; a.sg = sides.includes(c.o) ? i : -1 }
-      const vis = seeCity(i)
-      if (vis) boom(c.x, c.y, 1)
-      shattered(here, vis)
+      if (seeCity(i)) boom(c.x, c.y, 1)
+      shattered(here)
       const losing = odds(here)                // AI routs to a quiet neighbour
       for (const a of here) {
         if (!S.F[a.o].ai || a.w <= 0.5 || !losing(a)) continue
@@ -423,7 +417,6 @@ export function tick () {
   }
 
   // 7. victory
-  for (const a of S.A) if (a.o === S.me && a.w > S.stat.most) S.stat.most = a.w
   for (let f = 0; f < S.F.length; f++) {
     const n = cnt(f)
     if (S.F[f].alive && !n && !S.A.some(a => a.o === f)) {

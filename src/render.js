@@ -20,7 +20,7 @@ export function resize () {
 export const toWorld = (px, py) => ({ x: (px - V.ox) / V.s, y: (py - V.oy) / V.s })
 
 export const cityR = c => 13 + Math.min(c.p, 260) / 20
-const col = o => o < 0 ? '#6b6482' : S.F[o].c
+const col = o => S.F[o].c
 
 // where an army logically sits: lerped along its road with sub-tick progress,
 // or fanned around its node inside its owner's slot. `sp` is the host's place
