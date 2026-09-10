@@ -1,7 +1,6 @@
 import { S, T, D } from './state.js'
 import { REALMS, SCN } from './map.js'
 import { mute, muted, chime } from './audio.js'
-import { V, cityR } from './render.js'
 import { raise, split, canRaise, canSplit, getArmy, seeCity, tired, active } from './sim.js'
 
 // the calendar. 13 months of 28 days, so a year is 364 and the whole date is one
@@ -25,28 +24,33 @@ export const hooks = {}
 const set = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h } }
 const btn = (a, i, on, txt) => `<button data-a=${a} data-i=${i}${on ? '' : ' disabled'}>${txt}</button>`
 
-// Onboarding: seven tips floating over your capital. Which one shows is read off
-// the board, like the fog and the command — S.tut only remembers how far you got,
-// so the sequence cannot run backwards and knows when the last act is done.
-const TIP = ['Click below to select your capital city', 'Click the "Raise" button to create an army',
-  'Wait for conscription', 'Click to select your unit', 'Click an enemy city to move',
-  'Click anywhere else to unselect', 'Conquer all the cities in the map to win']
+// Onboarding: seven tips under the hud. Which one shows is read off the board,
+// like the fog and the command — S.tut only remembers how far you got, so the
+// sequence cannot run backwards and knows when the last act is done.
+// `$` in a tip is the player's own realm marker, which is how the rest of the
+// game says "yours" — the hud wears the same glyph beside the realm name.
+const TIP = ['Select any $ city', 'Select the "Raise" button',
+  'Assembling Unit...', 'Select your new unit', 'Select another city to march',
+  'Tap anywhere else to unselect', 'Conquer all cities to win!']
 function tut () {
-  const i = S.C.findIndex(c => c.cap && c.o === S.me)
-  if (S.over || ov.innerHTML || S.tut > 6 || i < 0) return set(tip, '')
+  // no city of your own left is the end of the tutorial, not no *capital*: the
+  // sequence stopped naming the capital, so it stopped depending on holding one
+  if (S.over || ov.innerHTML || S.tut > 6 || !S.C.some(c => c.o === S.me)) return set(tip, '')
   const a = active()
+  // step 1 asks for a city and takes any city — picking the "wrong" one used to
+  // leave the player staring at the same instruction they had just followed.
+  // Step 2 is the same rule one move on: any muster of yours, not the capital's
   const d = a ? (a.t < 0 ? 4 : 5)
     : S.A.some(x => x.o === S.me) ? 3
-    : S.C[i].mu ? 2
-    : S.sel && S.sel.k === 'c' && S.sel.i === i ? 1 : 0
+    : S.C.some(c => c.o === S.me && c.mu) ? 2
+    : S.sel && S.sel.k === 'c' ? 1 : 0
   if (d > S.tut) S.tut = d                 // the furthest point reached, for the ending
   if (S.tut > 4 && !a) S.tut = 6              // the host stood down: on to the last word
-  set(tip, `${TIP[S.tut > 5 ? 6 : d]}<a data-a=z>dismiss</a>`)
-  // the card hangs by its bottom edge (translate -100%) a fixed margin above the
-  // city. Lifting it by a share of its own height instead — which is what -165%
-  // did — floated a two-line tip higher than a one-line one
-  tip.style.left = S.C[i].x * V.s + V.ox + 'px'
-  tip.style.top = (S.C[i].y - cityR(S.C[i])) * V.s + V.oy - 12 + 'px'
+  // the card sits where the toast does — under the hud, centred — and CSS puts
+  // it there. It used to be positioned from the capital's world coordinates
+  // every frame, which meant it moved with the camera, could be panned off the
+  // screen, and needed the capital to be on screen at all to be read
+  set(tip, `${TIP[S.tut > 5 ? 6 : d].replace('$', S.F[S.me].em)}<a data-a=z>dismiss</a>`)
 }
 
 export function ui () {

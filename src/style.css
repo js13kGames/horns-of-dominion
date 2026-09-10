@@ -30,8 +30,8 @@ button.on { background:#4a3d7a; border-color:#7a68b8; }
 #pan { top:44px; right:10px; width:212px; padding:11px 12px; }
 #pan:empty, #toast:empty, #tip:empty { display:none; }
 #tip {
-  width:168px; padding:7px 10px; text-align:center; pointer-events:none;
-  border-color:#7a68b8; transform:translate(-50%,-100%);
+  top:46px; left:50%; transform:translateX(-50%); max-width:calc(100% - 20px);
+  padding:7px 14px; text-align:center; pointer-events:none; border-color:#7a68b8;
 }
 #tip a { display:block; font-size:11px; opacity:.55; text-decoration:underline;
   cursor:pointer; pointer-events:auto; }
@@ -81,6 +81,6 @@ button.on { background:#4a3d7a; border-color:#7a68b8; }
   .sp { flex-basis:100%; margin-left:0; }    /* the speed row, full width, on its own */
   .sp button, #pan button { padding:8px 6px; }
   .sp button { flex:1; }
-  #toast { top:78px; }              /* clear of a status that is two rows tall now */
+  #toast, #tip { top:78px; }        /* clear of a status that is two rows tall now */
   #pan { top:auto; bottom:8px; left:8px; right:8px; width:auto; }
 }

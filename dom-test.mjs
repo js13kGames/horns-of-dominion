@@ -317,27 +317,34 @@ ok(!/data-a=f|Mend|Rebuilding/.test(els.pan.innerHTML),
   'and the city panel carries no Mend order any more')
 S.sel = null
 
-// --- onboarding: six tips over your capital, and a way out of them ---------
+// --- onboarding: six tips under the hud, and a way out of them -------------
 // the step is read off the board, so the sequence can be driven by playing it
 const armiesWere = S.A
 S.A = []; S.sel = null; S.tut = 0; S.C.forEach(c => { c.mu = 0 })
 const cap = S.C.findIndex(c => c.cap && c.o === S.me)
+// the sequence is driven through a city that is NOT the capital, which is the
+// whole point of the step-1 rule: any city of yours carries the tutorial on
+const burg = S.C.findIndex((c, k) => c.o === S.me && k !== cap)
 step(1)
-ok(/capital/.test(els.tip.innerHTML), 'the first tip asks for your capital')
-// the anchor is the card's bottom edge (CSS hangs it with translate -100%, which
-// no stub can check), so what is testable is that the anchor clears the top of
-// the disc by a small fixed margin — not by a share of the card's own height
-const capY = S.C[cap].y * V.s + V.oy, capR = cityR(S.C[cap]) * V.s
-const gap = () => capY - capR - parseFloat(els.tip.style.top)
-ok(els.tip.style.left === S.C[cap].x * V.s + V.ox + 'px', 'and floats over it')
-ok(gap() > 4 && gap() < 24, `hanging a fixed margin above the disc (${gap().toFixed(0)}px)`)
+ok(els.tip.innerHTML.includes('Select any ' + S.F[S.me].em + ' city'),
+  'the first tip asks for a city in your own colour, named by your realm glyph')
+ok(!/capital/.test(els.tip.innerHTML), 'and no longer singles out the capital')
+// the card sits in the toast's slot now, which is pure CSS and beyond a stub
+// with no layout engine. What *is* testable is the other half of that change:
+// tut() writes no inline position at all any more, so the card cannot follow
+// the camera or be panned off the screen. Re-adding either write fails this
+ok(els.tip.style.left === undefined && els.tip.style.top === undefined,
+  'and is placed by the stylesheet, not from the capital every frame')
 ok(/data-a=z/.test(els.tip.innerHTML), 'with a way out of it')
-S.sel = { k: 'c', i: cap }; step(1)
-ok(/Raise/.test(els.tip.innerHTML), 'selecting the capital asks for a warband')
+// an enemy city advances it too — the step is "a city is selected", full stop
+S.sel = { k: 'c', i: S.C.findIndex(c => c.o !== S.me) }; step(1)
+ok(/Raise/.test(els.tip.innerHTML), 'selecting any city at all moves it on')
+S.sel = { k: 'c', i: burg }; step(1)
+ok(/Raise/.test(els.tip.innerHTML), 'a city of yours that is not the capital does too')
 S.F[2].g = 999
-click('r', cap); step(1)
-ok(/conscription/.test(els.tip.innerHTML), 'and mustering asks you to wait')
-S.C[cap].mu = 1                          // one tick from done: the muster itself is
+click('r', burg); step(1)
+ok(/conscription/.test(els.tip.innerHTML), 'and mustering there asks you to wait')
+S.C[burg].mu = 1                         // one tick from done: the muster itself is
 S.speed = 8                              // tested above, and running 100 ticks here
 for (let k = 0; k < 12 && !S.A.length; k++) step(1)   // would move the whole war on
 S.speed = 1
@@ -346,7 +353,7 @@ ok(S.A.length === 1 && /select your unit/.test(els.tip.innerHTML),
   'the warband arrives and the tip points at it')
 S.sel = { k: 'a', i: S.A[0].id }; step(1)
 ok(/enemy city/.test(els.tip.innerHTML), 'taking command asks for a destination')
-tap(S.C[S.C[cap].n[0]].x, S.C[S.C[cap].n[0]].y); step(1)
+tap(S.C[S.C[burg].n[0]].x, S.C[S.C[burg].n[0]].y); step(1)
 ok(S.A[0].t >= 0 && /unselect/.test(els.tip.innerHTML), 'and marching asks you to stand it down')
 S.sel = null; step(1)
 ok(/Conquer/.test(els.tip.innerHTML), 'and standing it down earns the last word')
@@ -359,7 +366,8 @@ ok(els.tip.innerHTML === '', 'and it stays ended')
 
 // the dismiss link is the other way out, from wherever you are
 S.tut = 0; S.sel = null; S.A = []; step(1)
-ok(/capital/.test(els.tip.innerHTML), 'the tips can run again from the start')
+ok(els.tip.innerHTML.includes('Select any ' + S.F[S.me].em + ' city'),
+  'the tips can run again from the start')
 click('z'); step(1)
 ok(els.tip.innerHTML === '', 'and dismiss closes them for good')
 S.A = armiesWere; S.sel = null
