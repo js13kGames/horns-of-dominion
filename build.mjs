@@ -27,6 +27,41 @@ function minifyCss (c) {
     .trim()
 }
 
+// esbuild does not mangle property names, and roadroller does not make long ones
+// free: renaming ours is worth ~316 B — more than every feature cut that was on
+// the table put together — and it costs nothing in the source, because the
+// rename happens here and `src/` stays as readable as it was.
+//
+// It is an ALLOWLIST and it has to be. Mangling renames a property everywhere in
+// the bundle, so a name that is *also* a builtin or a DOM property breaks the
+// moment our renamed access lands on an object we do not own: `split` was in the
+// first draft and turned "a b c".split(' ') into .D(). A name belongs here only
+// if nothing outside our own objects answers to it.
+//
+// `dist-test` is what proves that, and it is the only thing that can: it is the
+// one harness that runs the packed bundle, and it now plays a whole war with the
+// audio running, so every property here is exercised. It fails on `split`, on
+// `sort` and on `dataset` being added to this list — all three were tried.
+const MINE = [
+  // state.js — the T balance surface
+  'inc', 'grow', 'raiseW', 'muster', 'speed', 'reach', 'atk', 'sgLoss', 'sgDmg',
+  'garrison', 'sack', 'occupy', 'mend', 'flee', 'odds', 'aiHoard', 'aiEvery', 'aiCap',
+  'bold', 'dying', 'rot', 'starve', 'escal', 'day', 'slow', 'stir', 'pace', 'hold',
+  'seize', 'calm', 'riot', 'rise', 'sp', 'tread', 'brawl', 'rest', 'wind', 'amb', 'home',
+  'wing',
+  // state.js — S, and the difficulty rungs
+  'fx', 'me', 'sel', 'tick', 'over', 'seed', 'scn', 'd0', 'tut', 'elapsed', 'alpha',
+  'toast', 'toastT', 'diff', 'nm', 'acts', 'cap', 'pac', 'alive', 'dm', 'ai', 'em',
+  // map.js — a city
+  'na', 'mu', 'oc', 'wn',
+  // sim.js — a warband
+  'pr', 'st', 'dst', 'eg', 'sg', 'fg', 'rx', 'ry',
+  // render.js — the camera
+  'ox', 'oy', 'lo',
+  // song.js / sfx.js — SoundBox fields, read by player.js
+  'songData', 'rowLen', 'patternLen', 'endPattern', 'numChannels'
+]
+
 async function bundle () {
   const out = await esbuild.build({
     entryPoints: ['src/main.js'],
@@ -35,7 +70,8 @@ async function bundle () {
     format: 'iife',
     target: 'es2020',
     write: false,
-    legalComments: 'none'
+    legalComments: 'none',
+    mangleProps: new RegExp('^(' + MINE.join('|') + ')$')
   })
   return out.outputFiles[0].text
 }

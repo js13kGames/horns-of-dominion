@@ -25,6 +25,16 @@ globalThis.innerWidth = 1200; globalThis.innerHeight = 800
 globalThis.addEventListener = (t, f) => { win.h[t] = f }
 let rafq = []
 globalThis.requestAnimationFrame = f => rafq.push(f)
+// Audio was never stubbed here, so audio.js's `typeof Audio` guard switched the
+// whole of it off and the packed build's song and effects were the one part of
+// the bundle no harness ever ran. Node has Blob and URL.createObjectURL, so the
+// element is all it takes — and now grind() renders every track for real
+const made = []
+globalThis.Audio = class {
+  constructor (src) { this.src = src; this.paused = true; made.push(this) }
+  play () { this.paused = false; return Promise.resolve() }
+  pause () { this.paused = true }
+}
 
 let fail = 0
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail = 1 }
@@ -54,5 +64,22 @@ ok(/🔴|🟠|🟢|🔵|🟣/.test(els.hud.innerHTML), 'standings render')
 // assertion holds for any of them: a realm always breeds at two of its cities
 ok(drew.some(t => t === '🦄' || t === '🐘'),
   'a specialist glyph survives the pack and reaches the canvas')
+const early = els.hud.innerHTML
+
+// Play the packed build to a finish. This is the only harness that runs the
+// *shipped* bundle, and since round 28 that bundle has its property names
+// mangled — so a smoke test of forty ticks is not enough cover for it. A whole
+// war touches nearly every property there is: sieges, unrest, revolts, stamina,
+// crumbling realms, the calendar rolling over, and the victory check.
+tap('v', '8')
+for (let i = 0; i < 40000 && !els.ov.innerHTML; i++) {
+  const q = rafq; rafq = []; t += 100; q.forEach(f => f(t))
+}
+ok(made.length === 5, `and grinds all five tracks on the way (${made.length})`)
+ok(/Victory|Defeat/.test(els.ov.innerHTML), 'the packed build plays a whole war to an ending')
+ok(/<b>\d+<\/b>/.test(els.ov.innerHTML), 'and scores it in days')
+ok(els.hud.innerHTML !== early && /year \d+/.test(early),
+  'while the calendar ran under it')
+
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

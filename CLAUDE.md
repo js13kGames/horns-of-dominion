@@ -24,7 +24,7 @@ The defining constraint is **13,312 bytes zipped**, enforced at build time (`bui
 
 Four stages. The last three were worth ~2,200 B when added, more than everything ever cut from the game:
 
-1. **esbuild** bundles and minifies to an IIFE.
+1. **esbuild** bundles and minifies to an IIFE, **and mangles our own property names** (`MINE` in `build.mjs`). esbuild does not do this by default and roadroller does not make long names free: it is worth **~316 B**, which was more than every feature cut on the table put together, and it costs nothing in the source because the rename happens at build time. It is an allowlist and must stay one — mangling renames a property everywhere in the bundle, so any name that is *also* a builtin or DOM property breaks where our renamed access meets an object we do not own. `split` was in the first draft and turned `"a b c".split(' ')` into `.D()`. `dist-test` is the only harness that can catch this, because it is the only one that runs the packed bundle; it fails on `split`, `sort` or `dataset` being added, all three tried.
 2. **Roadroller** re-encodes the bundle as a self-extracting payload (`optimize(1)`; level 2 buys ~10 B for 25 s, not worth it).
 3. **The stylesheet is folded into that payload** rather than left in the HTML shell, so Roadroller's model sees it too. Only `body{background:#0b0a12}` stays behind — without it the page flashes white for as long as decompression takes.
 4. **The zip is assembled by hand** with `@gfx/zopfli`: one entry, no extra fields. `zip -9` wrote 170 B of container where 118 suffices, and Info-ZIP's own deflate ran 224 B behind plain zlib before zopfli improved on that again. The DOS timestamp is pinned so builds are reproducible.
@@ -40,12 +40,14 @@ There is no test runner. Each harness is a standalone `.mjs` that imports the re
     node cmd-test.mjs     # flee cost, pathing, splitting, muster, engagement bookkeeping, civil unrest, unit kinds
     node road-test.mjs    # road engagements, deterministic army placements, no AI
     node dom-test.mjs     # drives the real modules against a stub browser
-    node dist-test.mjs    # boots the shipped, packed dist/index.html
+    node dist-test.mjs    # plays a whole war in the shipped, packed dist/index.html
 
 Two more that inspect rather than assert:
 
     node shot.mjs [seed] [frames] [out.svg]   # render one frame to SVG — see "Visual work" below
     node geo.mjs  [seeds]                     # features right across the frame? counts? forest cover?
+
+`dist-test` used to boot the bundle, run forty ticks and stop. Since the build mangles property names it is the only thing standing between a bad allowlist entry and a broken release, so it now **plays a game to its ending** — sieges, unrest, revolts, stamina, crumbling realms, the calendar rolling over, the victory check — and it **stubs `Audio`**, which it never did before. That guard mattered: `audio.js` switches itself off on `typeof Audio`, so the packed build's song and effects were the one part of the bundle no harness had ever run. The whole file still takes about a second and a half.
 
 **Run each separately and check `$?`.** Chaining with `&&` and piping to `tail` has masked a non-zero exit here before.
 
@@ -121,7 +123,7 @@ Three entry points, and each is one line of intent: `pan(dx, dy)` slides, `gaze(
 
 **The chrome moves out of the width's way at 700px.** One media query: the status bar wraps to two rows (`.sp` takes `flex-basis:100%`, so the speed buttons get a line of their own and stretch into touch targets), the date sheds ` of the Mazurian Age` — which rides in its own `.ag` span for that reason alone, and `dom-test` carries the span verbatim so deleting it fails loudly — and `#pan` unpins from the right edge to sit along the bottom, where a thumb is. `#cv` gets `touch-action:none`, without which the browser eats a drag as a scroll and a pinch as a page zoom before the canvas hears about either, and the viewport meta gets `user-scalable=no` to kill double-tap zoom. `viewport-fit=cover` and `env(safe-area-inset-*)` were written, measured at **59 B**, and dropped: without `cover` a phone keeps the page inside its own safe area anyway, which is the same result for nothing.
 
-**This round is over budget, and that was the instruction.** The camera, the pointer rework, the centring and the media query cost **~520 B** against 80 B of headroom, and `npm run build` exits non-zero — at **~13,750 / 13,312** as the round landed, and **~13,600** once round 26 gave 158 B back. Round 24 shipped at 13,232. Nothing was found to trim first: `fix` / `canFix` / `T.repair` and the largest-host stat are already gone, and a grep for the other removed features turns up no dead code. The measured menu, if the bytes have to come back: wheel-zoom was already cut (**29 B**), pinch-zoom and `zoom()` together are **101 B**, the whole media query is **102 B**, and the safe-area handling above was **59 B**. That is under half of it; past that the bytes have to come out of a feature of the game, not of this round. Remember the ±20 B of roadroller noise before reading any one of those figures too closely.
+**This round landed over budget, and round 28 paid for it — not by cutting any of it.** The camera, the pointer rework, the centring and the media query cost **~520 B** against 80 B of headroom, and `npm run build` exited non-zero for four rounds: ~13,750 as it landed, ~13,600 once round 26 gave 158 B back, ~13,550 after the onboarding move. What closed the gap was property mangling in the build (see "The build pipeline"), worth ~316 B on its own, which took it to **13,223 with 89 B of headroom** — every feature intact. Round 24 shipped at 13,232, so the phone support is, in the end, free. Nothing was found to trim first: `fix` / `canFix` / `T.repair` and the largest-host stat are already gone, and a grep for the other removed features turns up no dead code. The measured menu is kept in case it is ever needed again: wheel-zoom was cut for **29 B**, pinch-zoom and `zoom()` together are **101 B**, the whole media query is **102 B**, and safe-area handling was **59 B**. Note what the mangling result says about that list — the cheapest byte in this repo was never in a feature, it was in the build, and nobody had looked. Remember the ±20 B of roadroller noise before reading any of these figures too closely.
 
 ### Three kinds of warband
 

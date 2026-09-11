@@ -528,3 +528,4 @@ Click anywhere else to unselect unit.
 - Move the onboarding popup off the capital city: put it under the top menu bar, centred, in the same place as the toasts.
 - First onboarding tip: "Click below to select your capital city" -> "Select any (color) city", and advance to the next step whichever city was selected.
 - On mobile the unit/city panel obscures cities at the bottom; add a safe area at the bottom so the player can pan them out from under it.
+- Investigate where we can cut bytes. (Answer: esbuild property mangling on an allowlist of our own names — ~316 B, no feature lost, source unchanged. Build back under budget.)
