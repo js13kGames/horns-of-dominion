@@ -10,15 +10,15 @@ import { SFX } from './sfx.js'
 const can = typeof Audio !== 'undefined'   // headless harnesses have no audio
 const TRK = [song, ...SFX]                 // 0 song · 1 horn · 2 chime · 3 fanfare · 4 clash
 const bank = []
-let gen = null, at = 0, want = 0, fight = 0
+let gen = null, at = 0, want = 0, fight = 0, hid = 0
 export let muted = 0
 
 // the two looping tracks are the only ones with state to reconcile; the
 // one-shots are fired, not held
 const play = () => {
   const t = bank[0], w = bank[4]
-  if (t) want && !muted ? t.play().catch(() => {}) : t.pause()
-  if (w) fight && !muted ? w.play().catch(() => {}) : w.pause()
+  if (t) want && !muted && !hid ? t.play().catch(() => {}) : t.pause()
+  if (w) fight && !muted && !hid ? w.play().catch(() => {}) : w.pause()
 }
 
 export function grind () {
@@ -46,3 +46,15 @@ export const fanfare = () => shot(3)      // the kingdom is yours
 export const clash = on => { if (!fight !== !on) { fight = on; play() } }
 export const music = on => { want = on; play() }
 export const mute = () => { muted = muted ? 0 : 1; play(); return muted }
+
+// a backgrounded tab stops getting frames, so nothing reconciles the loops and
+// the song plays on over whatever the player switched to — loudly, on a phone.
+// Every other state change here arrives from the render loop; this is the one
+// that cannot, so it is the one event this file listens for. It goes on
+// `document`, which is where visibilitychange is dispatched — the window is
+// every other listener's home in this codebase and was this one's first, and
+// the harness could not tell the difference because it fires whatever it was
+// handed. `hid` joins the
+// reconcile rather than pausing directly, or coming back would resume a song
+// the player had muted, or a din for a fight that is over
+if (can) document.addEventListener('visibilitychange', () => { hid = document.hidden; play() })

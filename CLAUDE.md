@@ -427,6 +427,18 @@ The chime is on every button that commits to something (`'rgxfdv'.includes(a)` i
 
 There is no "am I fighting" flag to keep in sync, and reintroducing one is the same regression as reintroducing a stored fog bit.
 
+**A backgrounded tab is the one state change the render loop cannot deliver.** Every other thing `play()` reconciles arrives from a frame — and a hidden tab gets no frames, so the song and the din simply played on over whatever the player had switched to. Reported on iOS Safari and just as loud on Android:
+
+    if (can) document.addEventListener('visibilitychange', () => { hid = document.hidden; play() })
+
+**It goes on the `document`, and the first version of this shipped on the `window` and did not work** — tested on Android Chrome, music still playing. Every other listener in this codebase is a window listener, which is why it went there by habit. The lesson is in the harness, not the fix: `dom-test` stubbed `addEventListener` into **one bag shared by window and document**, so it fired whatever it had been handed and passed either way. It was a test of the assumption rather than of the target. The two registries are separate now, in `dom-test` **and** `dist-test`, and putting the listener back on the window fails both.
+
+That is also the first time `dist-test`'s document stub has had to grow: the packed bundle is the only place the *target* can be checked at all, and it now asserts `doc.h.visibilitychange` exists and that firing it pauses the song through the mangled `play()`.
+
+`hid` is a **third term in the reconcile**, not a pause of its own, and that distinction is the whole of the correctness. `mute()` calls `play()`, so an implementation that paused the elements on the way out and called `play()` on the way back would start the song again the moment a player toggled mute while away — playing to a tab nobody is looking at. `dom-test` pins exactly that case, because the obvious assertions (does it pause, does it come back) pass under both. Three mutations are checked: no listener at all, pausing directly instead of rejoining the reconcile, and the song handled without the din.
+
+The **simulation** needs nothing: `frame()` clamps `dt` to 0.1 s and caps catch-up at 8 ticks, so a tab that comes back after ten minutes resumes where it left off instead of fast-forwarding the war. The assertions spend no frames and no ticks — they fire the handler directly on the fight the din tests already have running, which is what keeps them from disturbing the sections after.
+
 **The effects are the only audio the harnesses cover, and they are covered properly.** `dom-test` stubs `Audio` alone — Node has `Blob` and `URL.createObjectURL` — so all five tracks are ground for real and a broken instrument row throws there rather than in the browser. Every one of those assertions is mutation-checked. Note that a natural `dom-test` run reaches exactly one of the two endings, which made the fanfare check half vacuous; the forced win at the end of the file is what makes it a test.
 
 `sfx.js` spells the three tonal instruments out in full even though they differ in four slots. Folding them into a shared array plus patches cost **20 B more**, because Roadroller models the near-identical rows better than the patch loop compresses. Measured; don't redo it.

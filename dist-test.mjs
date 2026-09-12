@@ -16,9 +16,12 @@ const mk = id => (els[id] = {
   addEventListener (t, f) { (this.h ||= {})[t] = f },
   getContext: () => ctx
 })
-const win = { h: {} }
+const win = { h: {} }, doc = { h: {} }
 const head = { appendChild: n => n }
-globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), head, activeElement: null }
+// a separate registry from the window's: audio.js listens on the document for
+// visibilitychange, and this stub is what made the packed build run it at all
+globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), head, activeElement: null,
+  hidden: false, addEventListener: (t, f) => { doc.h[t] = f } }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 1
 globalThis.innerWidth = 1200; globalThis.innerHeight = 800
@@ -59,6 +62,15 @@ ok(els.ov.innerHTML === '', 'Start clears the title and starts the game')
 let t = 0
 for (let i = 0; i < 200; i++) { const q = rafq; rafq = []; t += 100; q.forEach(f => f(t)) }
 ok(/💎/.test(els.hud.innerHTML), 'hud alive in the minified build')
+// the packed build is the only place the listener's TARGET is proved: it is
+// registered on the document, and a bundle that put it on the window would not
+// appear in doc.h at all. Backgrounding has to reach the mangled play()
+ok(typeof doc.h.visibilitychange === 'function', 'the packed build listens on the document for backgrounding')
+ok(made[0] && !made[0].paused, 'the song is playing before the tab goes away')
+document.hidden = true; doc.h.visibilitychange()
+ok(made[0].paused, 'and backgrounding stops it in the mangled bundle')
+document.hidden = false; doc.h.visibilitychange()
+ok(!made[0].paused, 'coming back starts it again')
 ok(/🔴|🟠|🟢|🔵|🟣/.test(els.hud.innerHTML), 'standings render')
 // the board is scenario I now, so this is the same map every run — but the
 // assertion holds for any of them: a realm always breeds at two of its cities

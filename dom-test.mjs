@@ -26,7 +26,12 @@ const ctx = new Proxy({
 ;['cv', 'hud', 'pan', 'ov'].forEach(mk)
 
 const win = { h: {} }
-globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null }
+// document and window keep SEPARATE handler registries on purpose: a listener
+// put on the wrong one of them is a real bug that a shared bag cannot see —
+// visibilitychange is dispatched at the document, and was once on the window here
+const doc = { h: {} }
+globalThis.document = { getElementById: id => els[id] || mk(id), createElement: () => mk('_c'), activeElement: null,
+  addEventListener: (t, f) => { doc.h[t] = f } }
 globalThis.location = { _h: '', get hash () { return this._h }, set hash (v) { this._h = '#' + v } }
 globalThis.devicePixelRatio = 2
 globalThis.innerWidth = 1280
@@ -56,6 +61,7 @@ const { active, seeArmy } = await import('./src/sim.js')
 const { cityR, V } = await import('./src/render.js')
 const { SCN } = await import('./src/map.js')
 const { TIP } = await import('./src/ui.js')
+const { mute } = await import('./src/audio.js')
 await import('./src/main.js')
 
 const step = (n, ms = 16.7) => {
@@ -629,6 +635,28 @@ ok(S.fx.some(f => f.k === 1), 'pausing leaves the clash marker on screen')
 ok(made[CLASH].paused, 'but the din stops while the game is paused')
 S.speed = 8; step(1, 0)   // a frame of no elapsed time: the sim is untouched
 ok(!made[CLASH].paused, 'and comes back when the board runs again')
+
+// a backgrounded tab gets no frames, and the loops are reconciled from the
+// render loop — so without an event of its own the song and the din play on
+// over whatever the player switched to. This spends no frames and no ticks:
+// the handler reconciles directly, on the fight already running above
+ok(!made[SONG].paused && !made[CLASH].paused, 'both loops are running to begin with')
+document.hidden = 1
+doc.h.visibilitychange()
+ok(made[SONG].paused, 'backgrounding the tab pauses the song')
+ok(made[CLASH].paused, 'and the din of battle with it')
+document.hidden = 0
+doc.h.visibilitychange()
+ok(!made[SONG].paused && !made[CLASH].paused, 'coming back brings both of them back')
+// `hid` joins the reconcile rather than pausing the elements behind its back,
+// and this is the case that tells the two apart: mute() calls play(), so an
+// implementation that merely paused on the way out would start the song again
+// mid-mute-toggle, playing to a tab nobody is looking at
+document.hidden = 1; doc.h.visibilitychange()
+mute(); mute()                             // muted and unmuted again, still away
+ok(made[SONG].paused, 'a mute toggled while away never starts the song playing to nobody')
+document.hidden = 0; doc.h.visibilitychange()
+ok(!made[SONG].paused, 'and only coming back does')
 S.A = [host(7009, 3, dark), host(7010, 4, dark)]
 S.fx = []; step(2, 100)
 ok(made[CLASH].paused, 'the same battle in the fog does not')
