@@ -158,7 +158,9 @@ const odds = g => {
 export const canSplit = a => !!a && a.t < 0 && !a.st && a.w >= 2
 export function split (a, n) {
   if (!canSplit(a)) return 0
-  n = Math.max(1, Math.min(Math.round(n), Math.floor(a.w) - 1))
+  // `|| 1` is the zero guard: a slider that answers 0, NaN or nothing at all
+  // must not push an empty warband onto the board, nor NaN the host it left
+  n = Math.max(1, Math.min(Math.round(n) || 1, Math.floor(a.w) - 1))
   a.w -= n
   a.hold = 1
   S.A.push({ id: nextId++, o: a.o, w: n, k: a.k, a: a.a, t: -1, pr: 0, st: 0, dst: -1, hold: 1, fg: a.fg })

@@ -93,6 +93,17 @@ ok(S.A.length === 2 && S.A[0].w === 70 && S.A[1].w === 30, 'warriors are conserv
 for (n = 0; n < 50; n++) tick()
 ok(S.A.length === 2, 'the halves stay apart while parked')
 ok(!split(put(962, 0, 1, start, -1), 1), 'a single warrior cannot be split')
+
+// a degenerate slider answer must never put an empty warband on the board. 0 and
+// a negative were always clamped; NaN and undefined were not, and they poisoned
+// the host that was split as well as the one that came off it
+fresh()
+for (const bad of [0, -5, NaN, undefined, '']) {
+  S.A = [put(963, 0, 100, start, -1)]
+  split(S.A[0], bad)
+  ok(S.A.length === 2 && S.A[1].w === 1 && S.A[0].w === 99,
+    'splitting on ' + (bad === '' ? 'an empty slider' : bad) + ' yields one warrior, not none')
+}
 order(S.A[1], S.C[start].n[0])
 ok(!S.A[1].hold, 'marching clears the hold')
 
