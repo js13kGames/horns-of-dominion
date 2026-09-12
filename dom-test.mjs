@@ -52,7 +52,7 @@ globalThis.Audio = class {
 }
 
 const { S, T, W, H } = await import('./src/state.js')
-const { active } = await import('./src/sim.js')
+const { active, seeArmy } = await import('./src/sim.js')
 const { cityR, V } = await import('./src/render.js')
 const { SCN } = await import('./src/map.js')
 const { TIP } = await import('./src/ui.js')
@@ -275,6 +275,55 @@ ok(active() === army, 'and it stays under command, so the order can be redirecte
 // never be turned around: at pr 0 the host sits exactly on the city it left
 tap(S.C[mine].x, S.C[mine].y)
 ok(army.t === mine && army.a === dest, 'clicking the city it left turns the march around')
+
+// --- tapping another host of yours hands command over ----------------------
+// it used to stand the warband down, which reads as the tap doing nothing. A
+// city still wins the hit test, so this is gated on there being none under the
+// tap — a resting host is drawn at cityR + 17 and the city answers to cityR + 6
+const mate = { id: 9101, o: S.me, w: 30, k: 0, a: mine, t: S.C[mine].n[0], pr: 0.5, st: 0, dst: -1, hold: 0, fg: 0 }
+S.A.push(mate); step(1)
+S.sel = { k: 'a', i: army.id }
+played.length = 0
+tap(mate.rx, mate.ry)
+ok(S.sel.k === 'a' && S.sel.i === mate.id && active() === mate,
+  'tapping another of your hosts puts that one under command')
+ok(played.includes(CHIME), 'and the handover chimes')
+
+// the invariant the gate protects, and it has to be tested on a host drawn *on*
+// the city: a resting one sits at cityR + 17 and can never shadow it, but one
+// marching out at progress 0 is drawn dead on the centre. Without the gate that
+// host answers the tap and you could never march a second one in to reinforce
+const leaving = { id: 9103, o: S.me, w: 30, k: 0, a: dest, t: S.C[dest].n[0], pr: 0, st: 0, dst: -1, hold: 0, fg: 0 }
+S.A.push(leaving); step(1)
+ok(Math.hypot(leaving.rx - S.C[dest].x, leaving.ry - S.C[dest].y) < 15,
+  'a host marching out at progress 0 is drawn on the city it left')
+S.sel = { k: 'a', i: mate.id }
+mate.a = mine; mate.t = -1; mate.pr = 0; mate.dst = -1
+tap(S.C[dest].x, S.C[dest].y)
+ok(mate.t === dest && S.sel.i === mate.id,
+  'and the city still wins that tap: a destination, not a handover')
+
+// --- an enemy column is a destination too ----------------------------------
+// a road cannot be tapped, so the column itself is the only way to say "go and
+// meet that". Head for where it is going — unless you are standing there, in
+// which case head for where it came from. Either way you meet it between
+const foe = { id: 9102, o: (S.me + 1) % S.F.length, w: 30, k: 0, a: dest, t: mine, pr: 0.5, st: 0, dst: -1, hold: 0, fg: 0 }
+S.A.push(foe); step(1)
+ok(seeArmy(foe), 'the column is in sight, so it can be tapped at all')
+
+army.a = mine; army.t = -1; army.pr = 0; army.dst = -1; army.st = 0
+S.sel = { k: 'a', i: army.id }
+tap(foe.rx, foe.ry)
+ok(army.t === dest, 'standing where a column is headed, you march out to meet it head-on')
+
+army.a = dest; army.t = -1; army.pr = 0; army.dst = -1; army.st = 0
+S.sel = { k: 'a', i: army.id }
+tap(foe.rx, foe.ry)
+ok(army.t === mine, 'standing where it set out, you follow it to where it is going')
+
+S.A = S.A.filter(a => a.id !== 9101 && a.id !== 9102 && a.id !== 9103)
+army.a = dest; army.t = mine; army.pr = 0; army.dst = -1; army.st = 0
+S.sel = { k: 'a', i: army.id }
 
 tap(6, 6)                                  // empty sky
 ok(!active() && !S.sel, 'clicking anywhere else stands the warband down')

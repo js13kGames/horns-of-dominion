@@ -87,6 +87,12 @@ Click one of your hosts and it is under command (the canvas cursor becomes a cro
 
 **A city must win the hit test over a host standing on it** — `to = hc >= 0 ? hc : …` in `main.js`. At progress 0 a marching host sits exactly on the city it left, so if the host won, a march could never be turned around. There is a test for this; keep it.
 
+**Tapping another of your own hosts hands command to it**, and tapping an enemy is an order to go and meet it. Both were dead taps before: a friendly host that was not resting on a city, and any host on a road, both fell through to `to = -1` and stood the warband down, so the click read as doing nothing.
+
+The handover is gated on `hc < 0` — there must be no city under the tap — because the rule above still has to hold. That gate is only observable on a host drawn **on** a city: a resting host sits at `cityR + 17` while the city answers to `cityR + 6`, so it can never shadow one, but a host marching out at progress 0 is drawn dead on the centre and would otherwise answer the tap that was meant to send a second host in to reinforce. `dom-test` tests it on exactly that host, and asserts the 15px overlap first so the case cannot quietly stop being the case. The host already under command is excluded by id, which is what keeps the turn-a-march-around rule working.
+
+For an enemy the destination is derived: `ha.t < 0 ? ha.a : ha.t === act.a ? ha.a : ha.t` — a resting enemy is its own city, a column is **where it is going**, unless you are standing there already, in which case it is **where it came from**. Standing at its destination and marching to its origin is the head-on case; standing at its origin and marching to its destination is the chase. Four mutations are checked: the handover deleted, the `hc < 0` gate dropped, the column case reverted to resting-hosts-only, and the column always read as its origin.
+
 ### The backdrop is baked
 
 `terrain.js` renders the ground — grass, woods, mountains — once per map into an offscreen canvas at `paint()`, called from `fresh()` in `main.js`. The live frame pays one `drawImage` and nothing else, so detail inside `paint()` is free.

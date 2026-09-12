@@ -111,7 +111,20 @@ function act (cx, cy) {
   }
   const act = active()
   if (act) {                            // a warband is up: the map is its order sheet
-    const to = hc >= 0 ? hc : ha && ha.t < 0 ? ha.a : -1   // a city, or a host resting on one
+    // another of your own hosts is a handover of command, not a destination —
+    // it used to stand the warband down, which read as the tap doing nothing.
+    // Gated on there being no city under the tap, because a city still has to
+    // win the hit test (see below) or you could not march onto one you already
+    // hold: a resting host is drawn at cityR + 17 and the city answers to
+    // cityR + 6, so the disc beside the city and the city are separate targets
+    if (hc < 0 && ha && ha.o === S.me && ha.id !== act.id) {
+      S.sel = { k: 'a', i: ha.id }; chime(); return ui()
+    }
+    // a city, a host resting on one, or an enemy column: head for where that
+    // column is going, unless you are standing there already, in which case
+    // head for where it came from. Either way you meet it on the road between
+    const to = hc >= 0 ? hc
+      : ha ? (ha.t < 0 ? ha.a : ha.t === act.a ? ha.a : ha.t) : -1
     if (to >= 0) { order(act, to); chime() }
     else S.sel = null                   // anywhere else stands it down
     return ui()
