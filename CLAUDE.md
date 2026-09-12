@@ -226,9 +226,66 @@ It is gated by the same `o` that gates speed, so **a road fight is untouched**: 
 
 **What was left alone on purpose.** `force()` and `friend()` in `ai.js` still weigh hosts with bare `pw`, so the AI slightly under-rates a defender standing on its own city when it picks a target. Teaching them `T.home` is a one-word change to the highest-risk file in the repo, and the ladder above did not ask for it. If a defended city starts looking too attractive to the AI, that is the knob — with a full balance re-run.
 
-### A crumbling realm's walls, and why the floor is zero
+### Crumbling is gone, and the AI can see the whole board
 
-`T.rot` in step 6b sheds wall points from every city of a realm down to `T.dying` or fewer. It used to floor at **0.5**, and that floor was a bug with a very specific shape: **capture is `c.s <= 0` in the siege step**, so a floor above zero is a floor under the whole endgame.
+Round 30 deleted crumbling entirely — `T.starve` first (its own section below), then `T.rot` and the whole of step 6b. A realm down to its last cities keeps every wall point and every warrior it has. `T.dying` survives for **one** thing, the `rally` gate in step 5c, and that one is not optional: retiring it as well was measured in the same round and is catastrophic (p50 ~2.4x, 19–21% of games past 24k ticks, against 0–1%).
+
+**Removing the rot did not make dying realms fail on their own. It exposed why they never did.** Three all-AI stalemates were traced rather than assumed, and none of them was a wall that would not fall. Seed 9241 ends with realm 1 on one city — Mirgate, defence 10, **walls 78 of 78, not besieged** — while realm 4 holds nineteen cities, **147,107 gold**, and fifteen hosts including stacks of 698, 760, 720, 720 and 640 warriors, every one of them parked inland. The conqueror was not failing to breach the last city and was not declining a bad fight. **Not one of its hosts was adjacent to the city, and it had no way to become adjacent.**
+
+`step()` scored `S.C[a.a].n` — the cities next door to wherever a host already stood — and the only thing pulling a host forward was the friendly-drift term, which scores a city **only if that city borders an enemy**. So a host two or more hops behind the front scored 0 on every option it could see, `best` stayed `-1`, and it never moved again for the rest of the game. The rot had been hiding this for as long as it existed, by dissolving the cities the armies could not reach.
+
+**The fix is the candidate list, not a new heuristic.** `order()` already multi-hops through `hop()`, and `soon()` already discounts a prize by the walk — both halves were there:
+
+    for (let j = 0; j < NC; j++) {
+      if (j === a.a) continue
+
+Every city on the board is now a candidate for every idle host, priced by distance exactly as adjacent ones always were. Nothing else in `step()` changed: the attack gate, the scores, `sits`, `tired`, the flyer hunt and siege relief are all untouched. It cost **8 B**.
+
+**What the AI fix bought, measured** (400 games × five seed ranges at rung 2; *before* is the same tree with the one-hop loop restored, so this isolates the AI change from the crumbling removal):
+
+| seed | p50 | p90 | p99 | max | >24k |
+|---|---|---|---|---|---|
+| 1000 | 4247→**3840** | 7577→**6166** | 19857→**10660** | 81482→**12676** | 4→**0** |
+| 5000 | 4209→**3861** | 7085→**5958** | 19224→**11868** | 66617→**14903** | 3→**0** |
+| 9000 | 4210→**4007** | 6820→**6207** | 13992→**10680** | 24047→**11988** | 2→**0** |
+| 3000 | 4325→**3998** | 7449→**6285** | 15320→**10687** | 47100→**12832** | 3→**0** |
+| 13000 | 4341→**4152** | 7046→**6467** | 14327→**10556** | 46132→**12858** | 3→**0** |
+
+Every column, every range. **0 stalemates and 0 games over 24k ticks in 2,000 games**, against 15 over-24k games and 3 stalemates for the same tree one hop short. The `max` column is the tell: the worst war on the board went from 81,482 ticks to 12,676, and p99 lands within 10,556–11,868 across all five ranges where it used to scatter from 14k to 20k. An army that can find the front ends wars; the spread between seeds is now mostly the map.
+
+**And against the tree that shipped before this round** — crumbling intact, AI one-hop — the whole round is roughly free at the core and much tighter in the tail:
+
+| seed | p50 | p90 | p99 | max | stalemate |
+|---|---|---|---|---|---|
+| 1000 | 3849→3840 | 6702→6166 | 10703→10660 | 27967→**12676** | 0→0 |
+| 5000 | 3885→3861 | 6278→5958 | 10641→11868 | 11713→14903 | 0→0 |
+| 9000 | 3750→4007 | 6162→6207 | 11469→10680 | 20905→**11988** | **1→0** |
+| 3000 | 3941→3998 | 6437→6285 | 9286→10687 | 16013→12832 | 0→0 |
+| 13000 | 4015→4152 | 6520→6467 | 9332→10556 | 10398→12858 | **1→0** |
+
+p50 within ±4% everywhere, p99 up a little on three ranges and down on two, and **no game anywhere near the old tails**. Win share tightened as well: summed over 2,000 games the realm slots go 427 / 357 / 400 / 390 / 424 → **393 / 369 / 405 / 411 / 422** against a fair 400, the narrowest spread this file has recorded.
+
+**The one real cost is the middle of the difficulty ladder, and the reason is worth keeping.** `diff-test` at 200 a rung: 0 / 19.5 / 65.0 / 76.5 → **0 / 19.5 / 57.0 / 77.0**. Still monotonic, and the fair Duelist rung lands exactly on 20% — but Warlord sheds 8 points while Tyrant does not.
+
+It is **not** that opponents got better at fighting back; that was the first guess and it is wrong. A probe counting idle hosts that found no target at all (60 games a rung) shows the one-hop horizon was taxing the *high* rungs hardest, because a rung buys army cap and a bigger army overflows a one-city-deep frontier:
+
+| rung | stranded, the rung itself | stranded, its four Duelist opponents | after the fix |
+|---|---|---|---|
+| Duelist | 23.5% | 25.6% | 0.4% |
+| Warlord | **61.4%** | 22.0% | 0.6% |
+| Tyrant | **65.9%** | 20.5% | 0.9% |
+
+So part of what the top rungs were being sold was armies that would never reach a fight. The fix turns those into *marching* armies — and a marching host is not idle, so there is nobody left for an extra `act` to order. `D[].acts` only pays while you have an idle host to spend it on. Orders issued per turn against one Duelist opponent: Warlord **2.73x → 2.43x**, Tyrant **3.28x → 3.77x**, which is the direction both win shares moved. Warlord sits on the crossover; Tyrant's three acts and 1.9x cap still keep a third order fed. Warlord's own throughput fell 28% (5,986 → 4,339 orders) against its opponents' 18%, which is what rules out the catching-up story.
+
+A second contributor is **unseparated**: low-rung wars roughly halved (Duelist-vs-Duelist p50 10,820 → 6,047), and Warlord's edge is partly 1.6x income, which needs time to compound, where Tyrant's 2.3x bites sooner. Telling the two apart needs its own run. If Warlord needs its edge back, `D[].acts` is the first knob and `D[].cap` the second, each with a 200-game `diff-test` re-run.
+
+**What was deliberately not touched.** `force()` and `friend()` still weigh hosts with bare `pw`, ignoring `T.home`; the attack gate's `1.3` and `1.6` coefficients are unchanged; and the AI still never splits a host. The one-hop horizon was the whole of the passivity, and nothing else in `ai.js` needed a hand to prove it.
+
+`cmd-test` section 14 is now positive assertions, because the ones it replaced all keyed on the rot existing and would have gone vacuous the moment it left: a realm at `T.dying` **keeps every wall point it had**, its army **never starves**, and a siege of its city runs to the **identical tick** as the same city held by a realm owning everything. Mutation-checked both ways — restoring the rot fails it, restoring `T.starve` fails it.
+
+### The wall rot that used to be, and why the floor mattered
+
+**Removed in round 30 — see the section below.** `T.rot` in step 6b shed wall points from every city of a realm down to `T.dying` or fewer. It used to floor at **0.5**, and that floor was a bug with a very specific shape: **capture is `c.s <= 0` in the siege step**, so a floor above zero is a floor under the whole endgame.
 
 The floor **reset the wall every tick**, which meant a besieger had to cross the whole of it in a single tick or never cross it at all. A standard muster — `T.raiseW` 40 footmen — rams `40 * T.sgDmg` = **0.33** wall points a tick, under 0.5. So the wall sat at exactly 0.5 for ever while the host bled out against it at `T.sgLoss * c.d` a tick. Traced on seed 7 against a Defense-10 city: walls 42 → 0.5 by tick 200, host 40 → 0 warriors by tick 500, city never taken in 3,000 ticks.
 
@@ -247,6 +304,32 @@ The threshold was `ram > 60` early on, easing to ~43 by tick 20,000 as `T.escal`
 | 13000 | 3896→4015 | 6193→6520 | 10510→**9332** | 15232→**10398** | 1→1 |
 
 Read it as: **p99 comes in on four ranges of five**, p50 moves by less than the spread between ranges, and the stalemate and 24k counts (1→2 games in 2,000) are inside the noise the *unfixed* code already produces — seed 13000 had a stalemate before the change. `diff-test` improved: 0.5 / 23.0 / 65.0 / 76.0 → 0 / **19.5** / 65.0 / 76.5, the fair Duelist rung landing back on 20%.
+
+### A crumbling realm no longer starves, and what the `| 0` hides
+
+Step 6b used to melt a crumbling realm's **armies** alongside its walls: `T.starve` (`0.02 * P`, 0.2% of every host per tick) applied to every host of a realm at or below `T.dying`. It is gone, tunable and all, and the trailing `S.A.filter(a => a.w > 0.5)` went with it — nothing between the siege step's own cull and 6b touches `a.w` any more, so that filter was dead the moment the starve line left.
+
+**Why it went.** A dying realm gets chased down by the armies already on the board; starvation only took that job off them. And it read as a bug from the player's side. The strength number is `a.w | 0` in `render.js` and in the warband card — it **truncates** — so a host of one warrior printed `0` on the *first* starved tick and stayed alive, unhurt and reading as nothing for 346 ticks more before the 0.5 cull took it. That is the same shape as the "Walls 0" bug one section up: a truncated readout saying *gone* about something the sim still counts. The report that found it was a player splitting 40 warriors into forty singles at their last city; all forty printed 0 on the same tick, with no battle anywhere.
+
+**The split was also a real loss, not just a misleading one**, because the cull is per host: starving from 40 as one host lasted to tick **2,189**, as forty singles to tick **347**.
+
+**Measured** (400 games × five seed ranges at rung 2, `diff-test` at 200 a rung; *before* is the shipped tree, which reproduced this file's round-29 figures to the tick). Three ranges were run first and two of them grew an alarming `max`, so two more were run before concluding — the same procedure the wall-rot round used, and it reached the same verdict:
+
+| seed | p50 | p90 | p99 | max | stalemate | >24k |
+|---|---|---|---|---|---|---|
+| 1000 | 3849→4156 | 6702→**6487** | 10703→12909 | 27967→41693 | 0→1 | 1→2 |
+| 5000 | 3885→4225 | 6278→7152 | 10641→13485 | 11713→16419 | 0→0 | 0→0 |
+| 9000 | 3750→3925 | 6162→6875 | 11469→13094 | 20905→34694 | **1→0** | 1→1 |
+| 3000 | 3941→4022 | 6437→6767 | 9286→12242 | 16013→20940 | 0→0 | 0→0 |
+| 13000 | 4015→4104 | 6520→6645 | 9332→10699 | 10398→**16820** | **1→0** | **1→0** |
+
+Read it as: **p50 is up 2–9% in every range** (~5% on aggregate) and **p99 up 14–32% in every range**, which is the price and it is consistent. The `max` column is the one that looks frightening and is not: across 2,000 games a side the stalemate count went **2 → 1** and the games over 24k ticks **3 → 3**. No new class of unending game appeared; the same handful of long wars simply ran longer. `diff-test` stays monotonic — 0 / 19.5 / 65.0 / 76.5 → 0 / **22.5** / 64.0 / 77.0 — with the fair Duelist rung a little over 20% rather than under it.
+
+Win share widened a little: summed over all five ranges, realm slots went 427 / 357 / 400 / 390 / 424 → 422 / 332 / 440 / 405 / 400 against a fair 400. That is slot 1 down 25 and slot 2 up 40 in 2,000 games, which is the size of swing this file has twice recorded as unattributable from five ranges. Do not act on it without a sixth.
+
+It gave back **~15 B** (13,229 → 13,214 zipped, 98 B of headroom), which is inside Roadroller's own run-to-run spread.
+
+**What is still true, and is the next thing to look at if it bites.** `a.w | 0` still truncates, so any host taken below 1 warrior by *combat* reads 0 while it fights on. It is far rarer now that nothing drives a host down by fractions of a body a tick, and it was left alone rather than fixed blind: `Math.ceil` at the two print sites would cost ~10–15 B and would change what **every** host on the board reads (39.92 would print 40, not 39), which is a bigger change than the bug. Nothing tells the player their realm has started to crumble, either.
 
 `cmd-test` section 14 pins three things — a crumbling realm's walls reach **exactly 0**, one standard muster carries such a city (tick 142 on seed 7), and a *healthy* realm holds the same city longer (tick 201), so the rot is still a real weakening and not merely the removal of a floor. Three mutations were tried: the 0.5 floor restored, a floor of just **0.01**, and the rot deleted. All three fail it.
 
@@ -410,7 +493,7 @@ Three things make this cheaper than deleting a feature usually is. The tally was
 
 **Verify string replacements.** Silent no-op `sed`/`replace` edits have shipped bugs here more than once. Assert the match count, or use a tool that errors on no-match, and `grep` the result.
 
-**AI movement is the highest-risk code in the repo.** Past regressions include 13,000-warrior frozen stacks with 400/400 timeouts, and total gridlock from a movement gate. Change `ai.js` only with a full balance re-run. The AI never splits hosts — measured, and not a bug to fix without evidence. It *does* garrison, as of round 21, and the evidence that justified writing that was concrete: doubling `T.stir` gave it a way to lose cities it had no way to answer.
+**AI movement is the highest-risk code in the repo.** Past regressions include 13,000-warrior frozen stacks with 400/400 timeouts, and total gridlock from a movement gate. Round 30 added a third to that list in the opposite direction — armies that were not frozen by a gate but **stranded by a horizon**, scoring only the cities next door and so never finding a front two hops away; see "Crumbling is gone, and the AI can see the whole board". Change `ai.js` only with a full balance re-run. The AI never splits hosts — measured, and not a bug to fix without evidence. It *does* garrison, as of round 21, and the evidence that justified writing that was concrete: doubling `T.stir` gave it a way to lose cities it had no way to answer.
 
 **Visual work has no browser.** There is no headless browser available, so `shot.mjs` is how you actually look at a change: it drives the real game against a recording 2D context and re-emits a frame as SVG, which `qlmanage -t` rasterises into something readable. Rendering blind has repeatedly shipped mistakes that were obvious the moment the frame was looked at — a rainbow entirely hidden behind the island, back when there was one, mountains swallowed by their own tree line, labels invisible on bright grass.
 

@@ -388,20 +388,6 @@ export function tick () {
     c.s = Math.min(c.m, c.s + T.mend / (1 + S.tick / T.escal))
   }
 
-  // 6b. a realm down to its last holdings cannot keep its walls standing. The
-  // floor is 0 and has to be: at 0.5 the rot *outran the siege* and pinned the
-  // wall there, because a standard 40-footman muster rams 0.33 points a tick
-  // against 0.5 of stone put back. The city read "Walls 0" and could not be
-  // taken by anything under ~60 bodies — the besieger bled out on a wall that
-  // was already down. Capture is `c.s <= 0` in the siege step, so a floor above
-  // zero is a floor on the whole endgame.
-  for (let f = 0; f < S.F.length; f++) {
-    if (!S.F[f].alive || cnt(f) > T.dying) continue
-    for (const c of S.C) if (c.o === f) c.s = Math.max(0, c.s - T.rot)
-    for (const a of S.A) if (a.o === f) a.w -= a.w * T.starve   // no realm left to feed them
-  }
-  S.A = S.A.filter(a => a.w > 0.5)
-
   // 6c. tell the player when something of theirs comes under attack, once each
   for (let i = 0; i < NC; i++) {
     const c = S.C[i], hit = c.o === S.me && besieged(i)

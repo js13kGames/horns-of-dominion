@@ -41,9 +41,7 @@ export const T = {
                     // would get ten times as many decisions per unit of war
   aiCap: 55,        // AI stops mustering above this many warriors per city held
   bold: 4000 / P,   // AI aggression doubles every this many ticks
-  dying: 2,         // a realm down to this many cities starts to crumble
-  rot: 0.5 * P,     // wall points its holdings shed per tick while crumbling
-  starve: 0.02 * P, // share of its hosts that melts away per tick while crumbling
+  dying: 2,         // a realm this small rallies nobody: its lost cities settle
   escal: 5000 / P,  // sieges grind faster every this many ticks
   day: 1 / P,       // ticks in a day. 13 months of 28 days make a 364-day year,
                     // and a p50 war runs about a year and a bit of them

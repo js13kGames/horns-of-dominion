@@ -46,7 +46,7 @@ const MINE = [
   // state.js — the T balance surface
   'inc', 'grow', 'raiseW', 'muster', 'speed', 'reach', 'atk', 'sgLoss', 'sgDmg',
   'garrison', 'sack', 'occupy', 'mend', 'flee', 'odds', 'aiHoard', 'aiEvery', 'aiCap',
-  'bold', 'dying', 'rot', 'starve', 'escal', 'day', 'slow', 'stir', 'pace', 'hold',
+  'bold', 'dying', 'escal', 'day', 'slow', 'stir', 'pace', 'hold',
   'seize', 'calm', 'riot', 'rise', 'sp', 'tread', 'brawl', 'rest', 'wind', 'amb', 'home',
   'wing',
   // state.js — S, and the difficulty rungs

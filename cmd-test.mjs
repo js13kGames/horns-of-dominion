@@ -621,45 +621,52 @@ S.A[0].fg = T.wind
 aiTurn()
 ok(S.A[0].t === sib, 'a winded host still marches to relieve a besieged neighbour')
 
-// --- 14. a crumbling realm's walls reach zero, and zero can be taken --------
-// The rot used to floor at 0.5 while a standard muster rams T.raiseW * T.sgDmg
-// = 0.33 points a tick, so the stone went back faster than it came down: the
-// city read "Walls 0" for ever, and the besieger bled to death on a wall that
-// was already flat. Capture is `c.s <= 0`, so any floor above zero is a floor
-// under the whole endgame.
-const rotShrink = f => {                        // realm f down to exactly T.dying cities
-  const rotOwn = []
-  S.C.forEach((c, i) => { if (c.o === f && rotOwn.length < T.dying) rotOwn.push(i) })
+// --- 14. a small realm's walls are nobody's business but its own -----------
+// There is no crumbling any more: no wall rot, no starving hosts. A realm down
+// to its last city defends that city exactly as well as a realm holding
+// nineteen, and the only thing left keyed on T.dying is the rally gate in 5c.
+// These are positive assertions on purpose — "walls do not rot" keyed on a
+// number that is gone would pass for free the moment anyone deleted it.
+const shrink = f => {                        // realm f down to exactly T.dying cities
+  const own = []
+  S.C.forEach((c, i) => { if (c.o === f && own.length < T.dying) own.push(i) })
   S.C.forEach(c => { c.o = f ? 0 : 1 })
-  rotOwn.forEach(i => { S.C[i].o = f })
-  return rotOwn[0]
+  own.forEach(i => { S.C[i].o = f })
+  return own[0]
 }
-// the trap was never ram against rot: the floor *reset* the wall every tick, so
-// the siege had to cross the whole of it in one. A standard muster cannot
-ok(T.raiseW * T.K[0][1] * T.sgDmg < 0.5,
-  `a standard muster rams ${(T.raiseW * T.K[0][1] * T.sgDmg).toFixed(2)} a tick, under the 0.5 the ` +
-  'rot used to pin walls at — a floor one tick cannot clear is a floor it never clears')
 
+// left alone, the walls of a one-city realm stand where they stood
 fresh()
-let rotCity = rotShrink(1)
-for (let n = 0; n < 4000 && S.C[rotCity].s > 0; n++) tick()
-ok(S.C[rotCity].s === 0, `a crumbling realm's walls rot the whole way to 0 (${S.C[rotCity].s})`)
+let rotCity = shrink(1)
+const rotWall = S.C[rotCity].s
+for (let n = 0; n < 4000; n++) tick()
+ok(S.C[rotCity].s === rotWall,
+  `a realm down to ${T.dying} cities keeps every wall point it had (${rotWall})`)
 
+// and its hosts stand at full strength: nothing melts them for holding little
 fresh()
-rotCity = rotShrink(1)
-S.A = [put(1411, 0, T.raiseW, rotCity, -1)]
+rotCity = shrink(1)
+S.A = [put(1413, 1, T.raiseW, rotCity, -1)]
+for (let n = 0; n < 4000; n++) tick()
+ok(S.A.length === 1 && S.A[0].w === T.raiseW,
+  `and its army never starves (${S.A.length ? S.A[0].w : 0} of ${T.raiseW} still standing)`)
+
+// the clinching one: the siege runs to the identical tick whoever owns the rest
+// of the board, so the size of a defender's realm is worth nothing at its gate
+fresh()
+rotCity = shrink(1)
+S.A = [put(1411, 0, T.raiseW * 4, rotCity, -1)]
 let rotTook = -1
 for (let n = 0; n < 4000 && rotTook < 0 && S.A.length; n++) { tick(); if (S.C[rotCity].o === 0) rotTook = n }
-ok(rotTook > 0, `and one ${T.raiseW}-strong muster carries it (tick ${rotTook})`)
+ok(rotTook > 0, `a ${T.raiseW * 4}-strong muster carries a one-city realm (tick ${rotTook})`)
 
-// the same city rotOwn by a healthy realm still takes longer: rot is a real
-// weakening, not just the removal of a floor
 fresh()
-S.C.forEach(c => { if (c.o !== 1) c.o = 0 })            // realm 1 keeps all of its rotOwn
-S.A = [put(1412, 0, T.raiseW, rotCity, -1)]
+S.C.forEach(c => { if (c.o !== 1) c.o = 0 })            // realm 1 keeps everything it held
+S.A = [put(1412, 0, T.raiseW * 4, rotCity, -1)]
 let rotSlow = -1
 for (let n = 0; n < 4000 && rotSlow < 0 && S.A.length; n++) { tick(); if (S.C[rotCity].o === 0) rotSlow = n }
-ok(rotSlow > rotTook, `while a healthy realm holds it ${rotSlow - rotTook} ticks longer (${rotSlow})`)
+ok(rotSlow === rotTook,
+  `and a healthy realm holds the same city exactly as long (${rotSlow} v ${rotTook})`)
 
 console.log(fail ? '\nFAILURES' : '\nall good')
 process.exit(fail)

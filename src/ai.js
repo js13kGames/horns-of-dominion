@@ -1,4 +1,4 @@
-import { S, T, dist } from './state.js'
+import { S, T, NC, dist } from './state.js'
 import { raise, order, canRaise, pw, garrison, rate, tired } from './sim.js'
 
 // an enemy host walking the road between i and j — a flyer's whole reason to exist
@@ -85,8 +85,15 @@ function step (f, F) {
     if (sits(a.a, f) || tired(a)) continue   // holding a city quiet, or getting its breath
                                              // back: a winded host marched at half
                                              // pace is worth less than a rested one
+    // every city on the board, not just the ones next door. `order` already
+    // multi-hops through `hop`, and `soon` already prices the walk — scoring
+    // neighbours alone was what stranded armies: a host whose neighbours were
+    // all friendly and inland scored 0 on every one of them, so `best` stayed
+    // -1 and it never moved again. Whole 700-strong stacks sat out entire wars
+    // two hops behind a front they had no gradient to find
     let best = -1, bs = 0
-    for (const j of S.C[a.a].n) {
+    for (let j = 0; j < NC; j++) {
+      if (j === a.a) continue
       const c = S.C[j], e = force(j, f)
       let s
       if (c.o === f) {
