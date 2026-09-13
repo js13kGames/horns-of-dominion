@@ -4,17 +4,17 @@ post: https://blog.slashie.net/category/horns-of-dominion/
 # See github.com/js13kGames/hello-world for supported frontmatter
 ---
 
-The Rainbow Lands has kept no single crown since the Accord broke. It's twenty largest cities are divided into five realms: **Crimson Mane**, **Sunmane Reach**, **Verdant Glade**, **Azure Spire**, **Violet Veil**. And every one of them keeps a horn with a single note in it: *all of it, or nothing*.
+The Lands beyond the rainbow have kept no single crown since the accord broke centuries ago, it remains divided into five constantly warring noble realms.
 
-You are the king of one of these realms, living on an age where total conquest and unification is the only solution.
+You are the king of one of these realms, living on one of three periods of the Mazurian Age where total conquest and unification were the only solution.
 
-## Three ages to fight in
+## Three scenarios to fight in
 
-- **I. Rise of the Golden Horn** · Hearth 23rd, 13312 — a close-packed kingdom where every realm is a neighbour.
-- **II. The Broken Accord** · Lumin 10th, 13986 — long and thin, and it comes apart at two cities.
-- **III. The Radiant Spire** · Verdant 13th, 14001 — more roads than any age before, and longer.
+- **I. Rise of the Golden Horn** · Year 13312 — a close-packed map where every realm is a neighbour.
+- **II. The Broken Accord** · Year 13986 — long and thin, and it comes apart at two cities.
+- **III. The Radiant Spire** · Year 14001 — more roads than any age before, and longer.
 
-Time runs in the Mazurian Age: thirteen months of twenty-eight days, **Auriel** through **Lunaris**. Your campaign is scored in the days it took you.
+Time runs in the Mazurian Age: thirteen months of twenty-eight days, **Auriel** through **Lunaris**. Your campaign is scored in the days it took you to conquer the complete realm.
 
 ## Playing
 
